@@ -129,10 +129,21 @@ while i < len(body_lines):
             if not line_txt:
                 curr_opt_idx += 1
                 continue
-            opts = re.findall(r'([A-D])\.\s*(.*?)(?=(?:[A-D]\.|$))', line_txt)
-            if opts:
+            opts = re.findall(r'([A-D])[\.．\s\t]*(.*?)(?=(?:[A-D][\.．\s\t]|$))', line_txt)
+            if opts and any(k in ['A', 'B', 'C', 'D'] for k, v in opts):
                 for opt_k, opt_v in opts:
-                    options.append({"key": opt_k, "text": opt_v.strip()})
+                    opt_text = opt_v.strip()
+                    if not opt_text and curr_opt_idx + 1 < len(body_lines):
+                        next_l = body_lines[curr_opt_idx + 1].strip()
+                        if next_l and not re.match(r'^[A-D][\.．]', next_l):
+                            opt_text = next_l
+                            curr_opt_idx += 1
+                            opt_line_indices.append(curr_opt_idx)
+                    options.append({"key": opt_k, "text": opt_text})
+                opt_line_indices.append(curr_opt_idx)
+                curr_opt_idx += 1
+            elif options and len(options) < 4 and not re.match(r'^[0-9一二三四五六七八九十\.\（\(\)\）、]', line_txt) and "【真题再现】" not in line_txt:
+                options[-1]["text"] += " " + line_txt
                 opt_line_indices.append(curr_opt_idx)
                 curr_opt_idx += 1
             else:
@@ -256,6 +267,10 @@ def emit_atomic_card(p_title, lines_arr):
     text_content = re.sub(r'(?<=[\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])', '', text_content)
     text_content = re.sub(r'^(概念|注意|有关规定|定义／核心要点|生活应用举例|效力类型)', r'【\1】', text_content)
     
+    # 过滤泄漏的题目块
+    if "联考】" in text_content or "国考】" in text_content or "省考】" in text_content or "【真题" in text_content or "A.＠" in text_content or "A.①" in text_content:
+        return
+
     if len(text_content) >= 12:
         t_clean = clean_title_str(p_title)
         
@@ -307,16 +322,8 @@ while i < len(body_lines):
         i += 1
         continue
 
-    if re.match(r'^（[一二三四五六七八九十]+）[^\s]*', l) and len(l) < 25:
-        emit_atomic_card(card_title, card_lines)
-        cur_topic = l.strip()
-        card_title = l.strip()
-        card_lines = []
-        i += 1
-        continue
-
     # 原子拆分节点 (如 概念、注意、1. 民事权利能力、重力、摩擦力、仰韶文化 等)
-    sub_m = re.match(r'^(概念|注意|有关规定|定义／核心要点|生活应用举例|[0-9]+\.[^\n]{2,35}|（[0-9]）[^\n]{2,35}|[一二三四五六七八九十]+[、．][^\n]{2,35}|[【［](.*?)[】］])', l)
+    sub_m = re.match(r'^(概念|注意|有关规定|定义／核心要点|生活应用举例|[0-9]+\.[^\n]{2,35}|[一二三四五六七八九十]+[、．][^\n]{2,35}|[【［](.*?)[】］])', l)
     if sub_m and len(card_lines) > 0 and "真题再现" not in l:
         emit_atomic_card(card_title, card_lines)
         card_title = sub_m.group(1).replace("【", "").replace("】", "").replace("［", "").replace("］", "").strip()

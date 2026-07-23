@@ -251,7 +251,7 @@ export default function App() {
       <header className="header">
         <h1>
           <span>📚</span>
-          <span className="title-text">常识判断精炼</span>
+          <span className="title-text">常识题库</span>
         </h1>
         
         <div className="progress-container">
