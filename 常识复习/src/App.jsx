@@ -61,7 +61,22 @@ export default function App() {
     }
 
     setItems(loadedItems);
-    setCurrentIndex(0);
+    
+    if (isRandom && loadedItems.length > 0) {
+      const candidateIndices = [];
+      loadedItems.forEach((item, index) => {
+        if (item.status !== 'known') {
+          candidateIndices.push(index);
+        }
+      });
+      const randIndex = candidateIndices.length > 0 
+        ? candidateIndices[Math.floor(Math.random() * candidateIndices.length)]
+        : Math.floor(Math.random() * loadedItems.length);
+      setCurrentIndex(randIndex);
+    } else {
+      setCurrentIndex(0);
+    }
+
     setIsFlipped(false);
     setSelectedQuizOption(null);
     setHistory([]);
@@ -69,7 +84,11 @@ export default function App() {
 
   // 分类筛选重置
   useEffect(() => {
-    setCurrentIndex(0);
+    if (isRandom && currentCategoryItems.length > 0) {
+      setCurrentIndex(Math.floor(Math.random() * currentCategoryItems.length));
+    } else {
+      setCurrentIndex(0);
+    }
     setIsFlipped(false);
     setSelectedQuizOption(null);
   }, [selectedCategory]);
@@ -339,7 +358,15 @@ export default function App() {
             </button>
             <button
               className={`mode-btn ${isRandom ? 'active' : ''}`}
-              onClick={() => setIsRandom(true)}
+              onClick={() => {
+                setIsRandom(true);
+                if (currentCategoryItems.length > 0) {
+                  const randIdx = Math.floor(Math.random() * currentCategoryItems.length);
+                  setCurrentIndex(randIdx);
+                  setIsFlipped(false);
+                  setSelectedQuizOption(null);
+                }
+              }}
             >
               随机
             </button>

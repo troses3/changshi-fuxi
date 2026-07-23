@@ -222,6 +222,7 @@ card_lines = []
 
 def clean_title_str(raw_t):
     t = raw_t.strip()
+    t = re.sub(r'^第[一二三四五六七八九十\d]+讲', '', t).strip()
     t = re.sub(r'^[0-9一二三四五六七八九十\.\（\(\)\）、\s]+', '', t).strip()
     t = re.sub(r'^[【［（(]*[一二三四五六七八九十\d]+[）)]*[、．\s]*', '', t).strip()
     t = re.sub(r'[［【\[\(（]?(立|修|新|重|难)[］】\]\)）]?', '', t).strip()
@@ -275,9 +276,19 @@ def emit_atomic_card(p_title, lines_arr):
         t_clean = clean_title_str(p_title)
         
         display_title = t_clean or "重点考点"
-        if cur_topic and cur_topic != "通用" and clean_title_str(cur_topic) not in display_title:
-            display_title = f"{clean_title_str(cur_topic)} • {display_title}"
-            
+        
+        prefix_parts = []
+        sec_c = clean_title_str(cur_sec)
+        top_c = clean_title_str(cur_topic)
+        
+        if cur_sec and cur_sec != "通用" and sec_c not in display_title:
+            prefix_parts.append(sec_c)
+        if cur_topic and cur_topic != "通用" and top_c != sec_c and top_c not in display_title:
+            prefix_parts.append(top_c)
+
+        if prefix_parts:
+            display_title = " • ".join(prefix_parts) + " • " + display_title
+
         atomic_knowledge_db.append({
             "id": f"k_{len(atomic_knowledge_db)+1:04d}",
             "chapter": cur_ch,
@@ -312,12 +323,20 @@ while i < len(body_lines):
         i += 1
         continue
 
-    sec_m = re.search(r'(第[一二三四五六七八九十]+讲[^\s]*|[一二三四五六七八九十]+[、．][^\s]+)', l)
-    if sec_m and len(l) < 25:
+    if ("第" in l and "讲" in l and len(l) < 30) or re.match(r'^[一二三四五六七八九十]+[、．](民法|宪法|刑法|行政法|商法|经济法|诉讼法|劳动法|兵役法|监察法|知识产权)', l):
         emit_atomic_card(card_title, card_lines)
         card_title = ""
         card_lines = []
         cur_sec = l.strip()
+        cur_topic = "通用"
+        i += 1
+        continue
+
+    sec_m = re.search(r'^[一二三四五六七八九十]+[、．][^\s]+', l)
+    if sec_m and len(l) < 25:
+        emit_atomic_card(card_title, card_lines)
+        card_title = ""
+        card_lines = []
         cur_topic = l.strip()
         i += 1
         continue
