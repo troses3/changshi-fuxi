@@ -4,7 +4,7 @@ import './App.css';
 import knowledgeData from './data/knowledge_db.json';
 import questionData from './data/question_db.json';
 
-const STORAGE_KEY = 'cs-fuxi-tracker-v1';
+const STORAGE_KEY = 'cs-fuxi-tracker-v4';
 
 export default function App() {
   // 数据源与列表状态
@@ -13,8 +13,22 @@ export default function App() {
   });
   const [selectedCategory, setSelectedCategory] = useState('all');
   
-  // 卡片数据与状态 (knowledge / quiz 都具有 status: 'new'|'known'|'unsure'|'unknown')
-  const [items, setItems] = useState([]);
+  // 卡片数据与状态
+  const [items, setItems] = useState(() => {
+    const initMode = localStorage.getItem('cs-fuxi-mode') || 'knowledge';
+    const rawData = initMode === 'knowledge' ? knowledgeData : questionData;
+    const stored = localStorage.getItem(`${STORAGE_KEY}_${initMode}`);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return rawData.map(item => ({ ...item, status: 'new' }));
+  });
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [stats, setStats] = useState({ known: 0, unsure: 0, unknown: 0 });
@@ -27,7 +41,7 @@ export default function App() {
   // 真题选择的选项
   const [selectedQuizOption, setSelectedQuizOption] = useState(null);
 
-  // 卡片高度测量 Ref (1:1 成语项目动态测高)
+  // 卡片高度测量 Ref
   const cardBackInnerRef = useRef(null);
   const [cardHeight, setCardHeight] = useState('340px');
 
@@ -61,7 +75,10 @@ export default function App() {
     let loadedItems = [];
     if (stored) {
       try {
-        loadedItems = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) {
+          loadedItems = parsed;
+        }
       } catch (e) {
         loadedItems = [];
       }
@@ -140,7 +157,7 @@ export default function App() {
     }
   }, [items, activeMode]);
 
-  // 1:1 成语项目 - 动态测高 (Height Measurement Effect)
+  // 动态测高 (Height Measurement Effect)
   useEffect(() => {
     setTimeout(() => {
       if (cardBackInnerRef.current) {
@@ -182,11 +199,10 @@ export default function App() {
     }
   };
 
-  // 1:1 成语项目 - 下一张与状态标记切换算法
+  // 下一张与状态标记切换算法
   const handleNext = (status) => {
     if (!currentItem) return;
 
-    // 找到在原始全量 items 中的真实索引
     const realIndex = items.findIndex(i => i.id === currentItem.id);
     if (realIndex === -1) return;
 
@@ -197,10 +213,10 @@ export default function App() {
     setSelectedQuizOption(null);
 
     // 记录上一张的历史
-    setHistory(prev => [...prev, currentIndex]);
+    setHistory(prev => [...prev, safeIndex]);
 
     setTimeout(() => {
-      let nextIndex = currentIndex;
+      let nextIndex = safeIndex;
       let activeFilter = filter;
 
       const updatedCategoryItems = updatedItems.filter(item => {
@@ -234,12 +250,12 @@ export default function App() {
           if (candidateIndices.length > 0) {
             let finalCandidates = candidateIndices;
             if (candidateIndices.length > 1) {
-              finalCandidates = candidateIndices.filter(idx => idx !== currentIndex);
+              finalCandidates = candidateIndices.filter(idx => idx !== safeIndex);
             }
             nextIndex = finalCandidates[Math.floor(Math.random() * finalCandidates.length)];
           } else {
             const allIndices = Array.from({ length: updatedCategoryItems.length }, (_, i) => i);
-            const otherIndices = allIndices.filter(idx => idx !== currentIndex);
+            const otherIndices = allIndices.filter(idx => idx !== safeIndex);
             nextIndex = otherIndices.length > 0
               ? otherIndices[Math.floor(Math.random() * otherIndices.length)]
               : 0;
@@ -247,7 +263,7 @@ export default function App() {
         } else {
           let found = false;
           for (let i = 0; i < updatedCategoryItems.length; i++) {
-            let checkIndex = (currentIndex + 1 + i) % updatedCategoryItems.length;
+            let checkIndex = (safeIndex + 1 + i) % updatedCategoryItems.length;
             if (updatedCategoryItems[checkIndex].status !== 'known') {
               nextIndex = checkIndex;
               found = true;
@@ -255,18 +271,18 @@ export default function App() {
             }
           }
           if (!found) {
-            nextIndex = (currentIndex + 1) % updatedCategoryItems.length;
+            nextIndex = (safeIndex + 1) % updatedCategoryItems.length;
           }
         }
       } else {
         if (isRandom) {
           let finalCandidates = candidates;
           if (candidates.length > 1) {
-            finalCandidates = candidates.filter(idx => idx !== currentIndex);
+            finalCandidates = candidates.filter(idx => idx !== safeIndex);
           }
           nextIndex = finalCandidates[Math.floor(Math.random() * finalCandidates.length)];
         } else {
-          const nextCandidate = candidates.find(idx => idx > currentIndex);
+          const nextCandidate = candidates.find(idx => idx > safeIndex);
           nextIndex = nextCandidate !== undefined ? nextCandidate : candidates[0];
         }
       }
@@ -275,7 +291,7 @@ export default function App() {
     }, 300);
   };
 
-  // 1:1 成语项目 - 退回上一卡
+  // 退回上一卡
   const handlePrev = (e) => {
     e.stopPropagation();
     if (history.length > 0) {
@@ -303,7 +319,7 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Header - 1:1 成语项目视效 */}
+      {/* Header */}
       <header className="header">
         <h1>
           <span>📚</span>
@@ -372,7 +388,7 @@ export default function App() {
             ))}
           </div>
 
-          {/* 模式与随机/顺序选择栏 - 1:1 成语项目样式 */}
+          {/* 模式与随机/顺序选择栏 */}
           <div className="mode-toggle">
             <button
               className={`mode-btn ${activeMode === 'knowledge' ? 'active' : ''}`}
@@ -384,7 +400,7 @@ export default function App() {
               className={`mode-btn ${activeMode === 'quiz' ? 'active' : ''}`}
               onClick={() => setActiveMode('quiz')}
             >
-              真题演练
+              真题模式
             </button>
             <span className="mode-divider"></span>
             <button
@@ -411,18 +427,18 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content - 1:1 成语项目卡片布局 */}
+      {/* Main Content */}
       <main className="main-content">
-        <div
-          className={`card-container ${selectedQuizOption !== null ? 'expanded' : ''}`}
-          style={{ height: cardHeight }}
-          onClick={() => setIsFlipped(!isFlipped)}
-        >
-          <div className={`card ${isFlipped ? 'flipped' : ''}`}>
-            
-            {/* 卡片正面 */}
-            <div className="card-front">
-              {activeMode === 'knowledge' ? (
+        {activeMode === 'knowledge' ? (
+          /* 考点模式：3D 翻转卡片 */
+          <div
+            className="card-container"
+            style={{ height: cardHeight }}
+            onClick={() => setIsFlipped(!isFlipped)}
+          >
+            <div className={`card ${isFlipped ? 'flipped' : ''}`}>
+              {/* 卡片正面 */}
+              <div className="card-front">
                 <h2 
                   className="idiom-word" 
                   style={(() => {
@@ -435,105 +451,110 @@ export default function App() {
                 >
                   {currentItem.title}
                 </h2>
-              ) : (
-                <div style={{ padding: '0 0.5rem', textAlign: 'left', width: '100%' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: '700' }}>
-                    🎯 来源：{currentItem.source || '真题演练'}
+
+                <div className="card-hint">
+                  点击翻转查看考点精释
+                </div>
+
+                {currentItem.status !== 'new' && (
+                  <div className="status-badge" style={{ backgroundColor: getStatusColor(currentItem.status) }}>
+                    上次标记: {currentItem.status === 'known' ? '认识' : currentItem.status === 'unsure' ? '模糊' : '不认识'}
                   </div>
-                  <h2 style={{ fontSize: '1.15rem', fontWeight: '700', lineHeight: '1.7', color: 'var(--text-primary)' }}>
-                    {currentItem.stem}
-                  </h2>
-                </div>
-              )}
-
-              <div className="card-hint">
-                点击翻转查看{activeMode === 'knowledge' ? '考点精释' : '真题选项'}
+                )}
               </div>
 
-              {currentItem.status !== 'new' && (
-                <div className="status-badge" style={{ backgroundColor: getStatusColor(currentItem.status) }}>
-                  上次标记: {currentItem.status === 'known' ? '认识' : currentItem.status === 'unsure' ? '模糊' : '不认识'}
-                </div>
-              )}
-            </div>
+              {/* 卡片反面 */}
+              <div className="card-back">
+                <div className="card-back-inner" ref={cardBackInnerRef}>
+                  <div className="group-tag">
+                    {currentItem.chapter} {currentItem.section ? `· ${currentItem.section}` : ''}
+                  </div>
 
-            {/* 卡片反面 */}
-            <div className="card-back">
-              <div className="card-back-inner" ref={cardBackInnerRef}>
-                <div className="group-tag">
-                  {currentItem.chapter} {currentItem.section ? `· ${currentItem.section}` : ''}
-                </div>
-
-                <div className="card-back-content">
-                  {activeMode === 'knowledge' ? (
-                    <>
-                      <h3>{currentItem.title}</h3>
-                      <div className="full-definition-container">
-                        <strong>【{currentItem.title}】的考点精释</strong>
-                        <span>{currentItem.content}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <h3 style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '0.8rem' }}>
-                        {currentItem.stem}
-                      </h3>
-                      
-                      <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '0.5rem' }}>
-                        请选择正确的选项：
-                      </div>
-
-                      <div className="options-container">
-                        {currentItem.options.map((opt) => {
-                          let btnClass = "option-btn";
-                          if (selectedQuizOption !== null) {
-                            if (opt.key === currentItem.answer) {
-                              btnClass += " correct";
-                            } else if (selectedQuizOption === opt.key) {
-                              btnClass += " incorrect";
-                            }
-                            btnClass += " disabled";
-                          }
-
-                          return (
-                            <button
-                              key={opt.key}
-                              className={btnClass}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (selectedQuizOption === null) {
-                                  setSelectedQuizOption(opt.key);
-                                }
-                              }}
-                              disabled={selectedQuizOption !== null}
-                            >
-                              <span className="option-label">{opt.key}. </span>
-                              <span style={{ flex: 1 }}>{opt.text}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* 答题后展现权威解析 */}
-                      {selectedQuizOption !== null && (
-                        <div className="full-definition-container" style={{ borderLeftColor: selectedQuizOption === currentItem.answer ? '#10b981' : '#ef4444' }}>
-                          <strong style={{ color: selectedQuizOption === currentItem.answer ? '#10b981' : '#ef4444' }}>
-                            【{selectedQuizOption === currentItem.answer ? '回答正确' : '回答错误'}】正确答案是 {currentItem.answer}
-                          </strong>
-                          <span>{currentItem.analysis}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
+                  <div className="card-back-content">
+                    <h3>{currentItem.title}</h3>
+                    <div className="full-definition-container">
+                      <strong>【{currentItem.title}】的考点精释</strong>
+                      <span style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>{currentItem.content}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-
           </div>
-        </div>
+        ) : (
+          /* 真题模式：直接交互答题卡片 */
+          <div className="card-front" style={{ position: 'relative', height: 'auto', minHeight: '340px', justifyContent: 'flex-start', alignItems: 'stretch', padding: '1.5rem', cursor: 'default' }}>
+            <div className="group-tag" style={{ alignSelf: 'flex-start', marginBottom: '0.5rem' }}>
+              {currentItem.chapter} {currentItem.section ? `· ${currentItem.section}` : ''}
+            </div>
 
-        {/* 1:1 成语项目 - 底部导航控制按钮区 (未翻转或真题模式未作答时隐藏) */}
-        <div className={`action-buttons ${(!isFlipped || (activeMode === 'quiz' && selectedQuizOption === null)) ? 'hidden' : ''}`}>
+            {currentItem.status !== 'new' && (
+              <div className="status-badge" style={{ backgroundColor: getStatusColor(currentItem.status) }}>
+                上次标记: {currentItem.status === 'known' ? '认识' : currentItem.status === 'unsure' ? '模糊' : '不认识'}
+              </div>
+            )}
+
+            {currentItem.source && (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.6rem', fontWeight: '700' }}>
+                🎯 来源：{currentItem.source}
+              </div>
+            )}
+
+            <h3 style={{ fontSize: '1.08rem', fontWeight: '700', lineHeight: '1.7', color: 'var(--text-primary)', marginBottom: '1.2rem', textAlign: 'left' }}>
+              {currentItem.stem}
+            </h3>
+
+            <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '0.6rem', textAlign: 'left' }}>
+              请选择正确选项：
+            </div>
+
+            <div className="options-container" style={{ width: '100%', marginBottom: '1rem' }}>
+              {(currentItem.options || []).map((opt) => {
+                let btnClass = "option-btn";
+                if (selectedQuizOption !== null) {
+                  if (opt.key === currentItem.answer) {
+                    btnClass += " correct";
+                  } else if (selectedQuizOption === opt.key) {
+                    btnClass += " incorrect";
+                  }
+                  btnClass += " disabled";
+                }
+
+                return (
+                  <button
+                    key={opt.key}
+                    className={btnClass}
+                    onClick={() => {
+                      if (selectedQuizOption === null) {
+                        setSelectedQuizOption(opt.key);
+                      }
+                    }}
+                    disabled={selectedQuizOption !== null}
+                    style={{ textAlign: 'left', display: 'flex', alignItems: 'flex-start', padding: '0.85rem 1rem' }}
+                  >
+                    <span className="option-label" style={{ fontWeight: '700', marginRight: '0.5rem' }}>{opt.key}. </span>
+                    <span style={{ flex: 1, lineHeight: '1.5' }}>{opt.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 答题后展现权威解析 */}
+            {selectedQuizOption !== null && (
+              <div className="full-definition-container" style={{ width: '100%', borderLeftColor: selectedQuizOption === currentItem.answer ? '#10b981' : '#ef4444', marginTop: '0.5rem', textAlign: 'left' }}>
+                <strong style={{ color: selectedQuizOption === currentItem.answer ? '#10b981' : '#ef4444', display: 'block', marginBottom: '0.4rem', fontSize: '1rem' }}>
+                  【{selectedQuizOption === currentItem.answer ? '回答正确 ✓' : '回答错误 ✗'}】正确答案是 {currentItem.answer}
+                </strong>
+                <span style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
+                  {currentItem.analysis}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 底部导航控制按钮区 (考点模式未翻转或真题模式未作答时隐藏) */}
+        <div className={`action-buttons ${((activeMode === 'knowledge' && !isFlipped) || (activeMode === 'quiz' && selectedQuizOption === null)) ? 'hidden' : ''}`}>
           <button className="btn btn-prev" onClick={handlePrev} disabled={history.length === 0}>
             上一题
           </button>
@@ -557,7 +578,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* 1:1 成语项目 - 重置进度控制组件 */}
+        {/* 重置进度控制组件 */}
         <div className="controls">
           <button className="btn-text" onClick={() => {
             if (window.confirm('确定要重置当前模式下的学习进度吗？')) {
