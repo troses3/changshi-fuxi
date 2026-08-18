@@ -161,19 +161,36 @@ function App() {
 
   useEffect(() => {
     if (idioms.length > 0 && currentIdiom) {
+      const targetText = quizMode === 'sentence' ? currentIdiom.word : getShortMeaning(currentIdiom.meaning);
+      
       // Find candidates in the same group
-      const sameGroupCandidates = idioms.filter(i => i.group === currentIdiom.group && i.word !== currentIdiom.word);
+      const sameGroupCandidates = idioms.filter(i => {
+        if (i.word === currentIdiom.word) return false;
+        if (quizMode === 'meaning' && getShortMeaning(i.meaning) === targetText) return false;
+        return i.group === currentIdiom.group;
+      });
       
       let distractors = [];
-      
-      // Shuffle group candidates randomly
       const shuffledGroupCandidates = [...sameGroupCandidates].sort(() => Math.random() - 0.5);
-      // Pick up to 3 distractors from the same group
-      distractors = shuffledGroupCandidates.slice(0, 3);
+      for (const cand of shuffledGroupCandidates) {
+        if (distractors.length >= 3) break;
+        const candText = quizMode === 'sentence' ? cand.word : getShortMeaning(cand.meaning);
+        if (!distractors.some(d => (quizMode === 'sentence' ? d.word === cand.word : getShortMeaning(d.meaning) === candText))) {
+          distractors.push(cand);
+        }
+      }
       
       // If we don't have enough, pick from other groups
       if (distractors.length < 3) {
-        const otherCandidates = idioms.filter(i => i.word !== currentIdiom.word && !distractors.some(d => d.word === i.word));
+        const otherCandidates = idioms.filter(i => {
+          if (i.word === currentIdiom.word) return false;
+          if (distractors.some(d => d.word === i.word)) return false;
+          if (quizMode === 'meaning') {
+            const sm = getShortMeaning(i.meaning);
+            if (sm === targetText || distractors.some(d => getShortMeaning(d.meaning) === sm)) return false;
+          }
+          return true;
+        });
         const shuffledOtherCandidates = [...otherCandidates].sort(() => Math.random() - 0.5);
         const needed = 3 - distractors.length;
         distractors = [...distractors, ...shuffledOtherCandidates.slice(0, needed)];
@@ -181,7 +198,7 @@ function App() {
 
       const opts = [
         { 
-          text: quizMode === 'sentence' ? currentIdiom.word : getShortMeaning(currentIdiom.meaning), 
+          text: targetText, 
           fullText: currentIdiom.meaning,
           isCorrect: true,
           word: currentIdiom.word
