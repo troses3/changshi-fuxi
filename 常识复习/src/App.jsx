@@ -40,6 +40,20 @@ export default function App() {
     localStorage.setItem('cs-fuxi-random', isRandom);
   }, [isRandom]);
 
+  // 计算当前分类下的过滤列表
+  const currentCategoryItems = items.filter(item => {
+    if (selectedCategory === 'all') return true;
+    return item.chapter === selectedCategory;
+  });
+
+  // 安全索引保护：确保当前索引严格在有效范围内
+  const safeIndex = currentCategoryItems.length > 0
+    ? (currentIndex >= 0 && currentIndex < currentCategoryItems.length ? currentIndex : 0)
+    : 0;
+
+  // 当前激活的项目
+  const currentItem = currentCategoryItems[safeIndex] || null;
+
   // 初始化加载与模式切换
   useEffect(() => {
     const rawData = activeMode === 'knowledge' ? knowledgeData : questionData;
@@ -62,16 +76,28 @@ export default function App() {
 
     setItems(loadedItems);
     
-    if (isRandom && loadedItems.length > 0) {
+    // 计算当前分类在载入数据中的子集
+    const catItems = loadedItems.filter(item => {
+      if (selectedCategory === 'all') return true;
+      return item.chapter === selectedCategory;
+    });
+
+    if (catItems.length === 0 && selectedCategory !== 'all') {
+      setSelectedCategory('all');
+    }
+
+    const targetPool = catItems.length > 0 ? catItems : loadedItems;
+
+    if (isRandom && targetPool.length > 0) {
       const candidateIndices = [];
-      loadedItems.forEach((item, index) => {
+      targetPool.forEach((item, index) => {
         if (item.status !== 'known') {
           candidateIndices.push(index);
         }
       });
       const randIndex = candidateIndices.length > 0 
         ? candidateIndices[Math.floor(Math.random() * candidateIndices.length)]
-        : Math.floor(Math.random() * loadedItems.length);
+        : Math.floor(Math.random() * targetPool.length);
       setCurrentIndex(randIndex);
     } else {
       setCurrentIndex(0);
@@ -84,23 +110,24 @@ export default function App() {
 
   // 分类筛选重置
   useEffect(() => {
-    if (isRandom && currentCategoryItems.length > 0) {
-      setCurrentIndex(Math.floor(Math.random() * currentCategoryItems.length));
+    if (currentCategoryItems.length === 0) return;
+    if (isRandom) {
+      const candidateIndices = [];
+      currentCategoryItems.forEach((item, index) => {
+        if (item.status !== 'known') {
+          candidateIndices.push(index);
+        }
+      });
+      const randIndex = candidateIndices.length > 0 
+        ? candidateIndices[Math.floor(Math.random() * candidateIndices.length)]
+        : Math.floor(Math.random() * currentCategoryItems.length);
+      setCurrentIndex(randIndex);
     } else {
       setCurrentIndex(0);
     }
     setIsFlipped(false);
     setSelectedQuizOption(null);
   }, [selectedCategory]);
-
-  // 计算当前分类下的过滤列表
-  const currentCategoryItems = items.filter(item => {
-    if (selectedCategory === 'all') return true;
-    return item.chapter === selectedCategory;
-  });
-
-  // 当前激活的项目
-  const currentItem = currentCategoryItems[currentIndex] || null;
 
   // 更新统计数据与保存至 localStorage
   useEffect(() => {
@@ -140,6 +167,16 @@ export default function App() {
     if (targetIndex !== -1) {
       setFilter(targetFilter);
       setCurrentIndex(targetIndex);
+      setIsFlipped(false);
+      setSelectedQuizOption(null);
+    } else {
+      alert(`在当前选中的章节中没有处于该状态的卡片，已为你切换到“全部章节”。`);
+      setSelectedCategory('all');
+      setFilter(targetFilter);
+      const allTargetIndex = items.findIndex(i => i.status === targetFilter);
+      if (allTargetIndex !== -1) {
+        setCurrentIndex(allTargetIndex);
+      }
       setIsFlipped(false);
       setSelectedQuizOption(null);
     }
