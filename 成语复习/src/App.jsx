@@ -205,7 +205,7 @@ function App() {
     }
 
     if (selectedOption !== null) {
-      const doScroll = () => {
+      const scrollTimer = setTimeout(() => {
         const actionBtnEl = actionButtonsRef.current;
         const floatingBarEl = document.querySelector('.floating-mode-bar');
 
@@ -224,15 +224,9 @@ function App() {
             });
           }
         }
-      };
+      }, 50);
 
-      const timer1 = setTimeout(doScroll, 60);
-      const timer2 = setTimeout(doScroll, 160);
-
-      return () => {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
-      };
+      return () => clearTimeout(scrollTimer);
     }
   }, [selectedOption, currentIdiom, isFlipped, quizMode]);
 
@@ -248,6 +242,7 @@ function App() {
 
         let currentHeight = 340;
         if (isFlipped && cardBackInnerRef.current) {
+          if (selectedOption !== null) return;
           currentHeight = Math.max(340, cardBackInnerRef.current.scrollHeight);
         }
 
@@ -268,7 +263,7 @@ function App() {
       window.removeEventListener('resize', calculateMargin);
       observer.disconnect();
     };
-  }, [searchQuery, isSearchOpen, isFlipped, selectedOption, currentIndex, quizMode]);
+  }, [searchQuery, isSearchOpen, isFlipped, currentIndex, quizMode]);
 
   useEffect(() => {
     if (idioms.length > 0 && currentIdiom) {
@@ -653,7 +648,7 @@ function App() {
           </div>
         ) : (
           <>
-            <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: selectedOption === null ? `${calculatedMarginTop}px` : undefined }} onClick={() => setIsFlipped(!isFlipped)}>
+            <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: `${calculatedMarginTop}px` }} onClick={() => setIsFlipped(!isFlipped)}>
           <div className={`card ${isFlipped ? 'flipped' : ''}`}>
             <div className="card-front">
               <div className="card-top-bar">

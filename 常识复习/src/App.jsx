@@ -284,7 +284,7 @@ export default function App() {
     }
 
     if (selectedQuizOption !== null || (activeMode === 'knowledge' && isFlipped)) {
-      const doScroll = () => {
+      const scrollTimer = setTimeout(() => {
         const actionBtnEl = actionButtonsRef.current;
         const floatingBarEl = document.querySelector('.floating-mode-bar');
 
@@ -301,15 +301,9 @@ export default function App() {
             });
           }
         }
-      };
+      }, 50);
 
-      const timer1 = setTimeout(doScroll, 60);
-      const timer2 = setTimeout(doScroll, 160);
-
-      return () => {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
-      };
+      return () => clearTimeout(scrollTimer);
     }
   }, [selectedQuizOption, currentItem, isFlipped, activeMode]);
 
@@ -743,7 +737,7 @@ export default function App() {
                 className={`card-container ${isFlipped ? 'expanded' : ''}`}
                 style={{
                   height: isFlipped ? cardHeight : '340px',
-                  marginTop: !isFlipped ? `${calculatedMarginTop}px` : undefined
+                  marginTop: `${calculatedMarginTop}px`
                 }}
                 onClick={() => setIsFlipped(!isFlipped)}
               >
