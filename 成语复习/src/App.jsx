@@ -236,43 +236,39 @@ function App() {
     }
   }, [selectedOption, currentIdiom, isFlipped, quizMode]);
 
-  // Precise Vertical Centering Logic
+  // Precise Vertical Centering Logic (Dynamically adapts in Step 1 & Step 2)
   useEffect(() => {
     const calculateMargin = () => {
       if (headerRef.current && modeBarRef.current && searchQuery.trim() === '') {
         const headerRect = headerRef.current.getBoundingClientRect();
         const modeBarRect = modeBarRef.current.getBoundingClientRect();
-        const availableHeight = modeBarRect.top - headerRect.bottom;
-        
-        // Use 340 as the base card height for calculating initial center position
-        const defaultCardHeight = 340;
-        let marginTop = (availableHeight - defaultCardHeight) / 2;
-        
-        // Add a small offset (e.g. 20px) to make it slightly above exact center, looks better visually
-        marginTop -= 20;
-        
-        if (marginTop < 0) marginTop = 0;
-        setCalculatedMarginTop(marginTop);
+        const space = modeBarRect.top - headerRect.bottom;
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const gapPx = 0.75 * rem;
+
+        let currentHeight = 340;
+        if (isFlipped && cardBackInnerRef.current) {
+          currentHeight = Math.max(340, cardBackInnerRef.current.scrollHeight);
+        }
+
+        let margin = (space - currentHeight) / 2 - gapPx;
+        setCalculatedMarginTop(Math.max(0, margin));
       }
     };
 
-    // Calculate immediately and on resize
-    calculateMargin();
+    setTimeout(calculateMargin, 40);
     window.addEventListener('resize', calculateMargin);
     
-    const observer = new ResizeObserver(() => {
-      calculateMargin();
-    });
-    
-    if (document.body) {
-      observer.observe(document.body);
-    }
+    const observer = new ResizeObserver(calculateMargin);
+    if (headerRef.current) observer.observe(headerRef.current);
+    if (modeBarRef.current) observer.observe(modeBarRef.current);
+    if (cardBackInnerRef.current) observer.observe(cardBackInnerRef.current);
 
     return () => {
       window.removeEventListener('resize', calculateMargin);
       observer.disconnect();
     };
-  }, [searchQuery, isSearchOpen]);
+  }, [searchQuery, isSearchOpen, isFlipped, selectedOption, currentIndex, quizMode]);
 
   useEffect(() => {
     if (idioms.length > 0 && currentIdiom) {
@@ -657,7 +653,7 @@ function App() {
           </div>
         ) : (
           <>
-            <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: !isFlipped ? `${calculatedMarginTop}px` : undefined }} onClick={() => setIsFlipped(!isFlipped)}>
+            <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: selectedOption === null ? `${calculatedMarginTop}px` : undefined }} onClick={() => setIsFlipped(!isFlipped)}>
           <div className={`card ${isFlipped ? 'flipped' : ''}`}>
             <div className="card-front">
               <div className="card-top-bar">

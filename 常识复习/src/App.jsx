@@ -243,7 +243,7 @@ export default function App() {
     }
   }, [items, activeMode]);
 
-  // 动态居中计算 (Precise Vertical Centering)
+  // 动态居中计算 (Precise Vertical Centering - Dynamic in Step 1 & Step 2)
   useEffect(() => {
     const calcMargin = () => {
       if (headerRef.current && modeBarRef.current && searchQuery.trim() === '') {
@@ -252,22 +252,29 @@ export default function App() {
         const space = modeBarTop - headerBottom;
         const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
         const gapPx = 0.75 * rem;
-        let margin = (space - 340) / 2 - gapPx;
+
+        let currentHeight = 340;
+        if (activeMode === 'knowledge' && isFlipped && cardBackInnerRef.current) {
+          currentHeight = Math.max(340, cardBackInnerRef.current.scrollHeight);
+        }
+
+        let margin = (space - currentHeight) / 2 - gapPx;
         setCalculatedMarginTop(Math.max(0, margin));
       }
     };
 
-    setTimeout(calcMargin, 50);
+    setTimeout(calcMargin, 40);
     window.addEventListener('resize', calcMargin);
     const observer = new ResizeObserver(calcMargin);
     if (headerRef.current) observer.observe(headerRef.current);
     if (modeBarRef.current) observer.observe(modeBarRef.current);
+    if (cardBackInnerRef.current) observer.observe(cardBackInnerRef.current);
 
     return () => {
       window.removeEventListener('resize', calcMargin);
       observer.disconnect();
     };
-  }, [searchQuery, selectedCategory, activeMode, isSearchOpen]);
+  }, [searchQuery, selectedCategory, activeMode, isSearchOpen, isFlipped, selectedQuizOption, currentIndex]);
 
   // 动态测高与自动平滑滚动 (Height Measurement & Auto Scroll Effect)
   useEffect(() => {
