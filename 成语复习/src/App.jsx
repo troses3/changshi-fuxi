@@ -654,19 +654,29 @@ function App() {
             <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: !isFlipped ? `${calculatedMarginTop}px` : undefined }} onClick={() => setIsFlipped(!isFlipped)}>
           <div className={`card ${isFlipped ? 'flipped' : ''}`}>
             <div className="card-front">
-              {quizMode === 'sentence' ? (
-                <h2 className="idiom-word sentence-blank">
-                  {currentExample ? currentExample.replace(new RegExp(currentIdiom.word, 'g'), '______') : '（暂无例句）'}
-                </h2>
-              ) : (
-                <h2 className="idiom-word">{currentIdiom.word}</h2>
-              )}
-              <div className="card-hint">点击翻转查看{quizMode === 'sentence' ? '选项' : '释义'}</div>
-              {currentIdiom.status !== 'new' && (
-                <div className="status-badge" style={{backgroundColor: getStatusColor(currentIdiom.status)}}>
-                  上次标记: {currentIdiom.status === 'known' ? '认识' : currentIdiom.status === 'unsure' ? '模糊' : '不认识'}
+              <div className="card-top-bar">
+                <div className="group-tag" style={{ margin: 0 }}>
+                  {currentIdiom.group} {currentIdiom.subcategory ? `· ${currentIdiom.subcategory}` : ''}
                 </div>
-              )}
+                {currentIdiom.status !== 'new' && (
+                  <div className="status-badge-inline" style={{ backgroundColor: getStatusColor(currentIdiom.status) }}>
+                    上次标记: {currentIdiom.status === 'known' ? '认识' : currentIdiom.status === 'unsure' ? '模糊' : '不认识'}
+                  </div>
+                )}
+              </div>
+
+              <div className="card-front-center-content">
+                {quizMode === 'sentence' ? (
+                  <h2 className="idiom-word sentence-blank" style={{ margin: 0, width: '100%', textAlign: 'justify', lineHeight: '1.65' }}>
+                    {currentExample ? currentExample.replace(new RegExp(currentIdiom.word, 'g'), '______') : '（暂无例句）'}
+                  </h2>
+                ) : (
+                  <h2 className="idiom-word" style={{ margin: 0 }}>{currentIdiom.word}</h2>
+                )}
+                <div className="card-hint" style={{ marginTop: '1.25rem', width: '100%', textAlign: 'center' }}>
+                  点击翻转查看{quizMode === 'sentence' ? '选项' : '释义'}
+                </div>
+              </div>
             </div>
             <div className="card-back">
               <div className="card-back-inner" ref={cardBackInnerRef}>
