@@ -18,7 +18,7 @@ function highlightMatch(text, query) {
 }
 
 /**
- * 智能分段渲染：将纯文本按 \n 拆分，识别结构化行（标题、编号、选项解析等），
+ * 智能分段渲染：将纯文本按 \n 拆分，识别结构化行（标题、编号、选项解析、列表圆点等），
  * 渲染为带视觉层级的段落组件。
  */
 function formatContent(text) {
@@ -28,8 +28,7 @@ function formatContent(text) {
 
   const lines = raw.split('\n').filter(l => l.trim() !== '');
 
-  // 如果只有一行且很短，直接返回
-  if (lines.length === 1) {
+  if (lines.length === 1 && !lines[0].startsWith('【') && !lines[0].startsWith('•')) {
     return <p className="fc-para">{lines[0]}</p>;
   }
 
@@ -39,17 +38,27 @@ function formatContent(text) {
 
     // 【xxx】 开头的段落标题
     if (/^【[^】]+】/.test(trimmed)) {
-      return <p key={i} className="fc-section-header">{trimmed}</p>;
+      return <div key={i} className="fc-section-header">{trimmed}</div>;
     }
 
     // （一）（二）... 中文大编号
     if (/^[（(][一二三四五六七八九十]+[）)]/.test(trimmed)) {
-      return <p key={i} className="fc-major-num">{trimmed}</p>;
+      return <div key={i} className="fc-major-num">{trimmed}</div>;
     }
 
-    // (1)(2)... 或 1. 2. 数字编号
-    if (/^[（(]\d+[）)]/.test(trimmed) || /^\d+[.．、]/.test(trimmed)) {
-      return <p key={i} className="fc-num-item">{trimmed}</p>;
+    // • 开头的列表项
+    if (/^[•·-]\s*/.test(trimmed)) {
+      return (
+        <div key={i} className="fc-bullet-item">
+          <span className="fc-bullet-dot">🔹</span>
+          <span className="fc-bullet-text">{trimmed.replace(/^[•·-]\s*/, '')}</span>
+        </div>
+      );
+    }
+
+    // ①②③④ 或 (1)(2)... 或 1. 2. 数字编号
+    if (/^[①②③④⑤⑥⑦⑧⑨⑩]/.test(trimmed) || /^[（(]\d+[）)]/.test(trimmed) || /^\d+[.．、]/.test(trimmed)) {
+      return <div key={i} className="fc-num-item">{trimmed}</div>;
     }
 
     // A项/B项/C项/D项 选项解析行
@@ -57,9 +66,9 @@ function formatContent(text) {
       const isCorrect = /正确/.test(trimmed);
       const isWrong = /错误/.test(trimmed);
       return (
-        <p key={i} className={`fc-option-line ${isCorrect ? 'fc-correct' : ''} ${isWrong ? 'fc-wrong' : ''}`}>
+        <div key={i} className={`fc-option-line ${isCorrect ? 'fc-correct' : ''} ${isWrong ? 'fc-wrong' : ''}`}>
           {trimmed}
-        </p>
+        </div>
       );
     }
 
@@ -728,7 +737,7 @@ export default function App() {
                   <div className="card-front">
                     <div className="card-top-bar">
                       <div className="group-tag">
-                        {currentItem.chapter} {currentItem.section ? `· ${currentItem.section}` : ''}
+                        {currentItem.chapter}{currentItem.section && currentItem.section !== currentItem.chapter ? ` · ${currentItem.section}` : ''}
                       </div>
                       {currentItem.status !== 'new' && (
                         <div className="status-badge-inline" style={{ backgroundColor: getStatusColor(currentItem.status) }}>
@@ -761,7 +770,7 @@ export default function App() {
                   <div className="card-back">
                     <div className="card-back-inner" ref={cardBackInnerRef}>
                       <div className="group-tag">
-                        {currentItem.chapter} {currentItem.section ? `· ${currentItem.section}` : ''}
+                        {currentItem.chapter}{currentItem.section && currentItem.section !== currentItem.chapter ? ` · ${currentItem.section}` : ''}
                       </div>
 
                       <div className="card-back-content" style={{ width: '100%' }}>
@@ -794,7 +803,7 @@ export default function App() {
               >
                 <div className="card-top-bar" style={{ position: 'relative', top: 0, left: 0, right: 0, marginBottom: '0.75rem' }}>
                   <div className="group-tag" style={{ margin: 0 }}>
-                    {currentItem.chapter} {currentItem.section ? `· ${currentItem.section}` : ''}
+                    {currentItem.chapter}{currentItem.section && currentItem.section !== currentItem.chapter ? ` · ${currentItem.section}` : ''}
                   </div>
 
                   {currentItem.status !== 'new' && (

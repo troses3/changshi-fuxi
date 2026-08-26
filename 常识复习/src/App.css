@@ -728,6 +728,25 @@ body {
   color: #475569;
 }
 
+.fc-bullet-item {
+  margin-top: 0.35rem !important;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  line-height: 1.65;
+  color: #334155;
+}
+
+.fc-bullet-dot {
+  font-size: 0.75rem;
+  line-height: 1.65;
+  flex-shrink: 0;
+}
+
+.fc-bullet-text {
+  flex: 1;
+}
+
 .fc-option-line {
   margin-top: 0.55rem !important;
   padding: 0.45rem 0.65rem;
