@@ -784,9 +784,6 @@ export default function App() {
                       <div className="card-back-content" style={{ width: '100%' }}>
                         <h3>{currentItem.title}</h3>
                         <div className="full-definition-container fc-container">
-                          <strong style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--text-primary)' }}>
-                            【{currentItem.title}】的考点精释
-                          </strong>
                           {formatContent(currentItem.content)}
                         </div>
                       </div>
