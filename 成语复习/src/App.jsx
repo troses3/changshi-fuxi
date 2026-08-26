@@ -205,7 +205,7 @@ function App() {
     }
 
     if (selectedOption !== null) {
-      const scrollTimer = setTimeout(() => {
+      const doScroll = () => {
         const actionBtnEl = actionButtonsRef.current;
         const floatingBarEl = document.querySelector('.floating-mode-bar');
 
@@ -224,9 +224,15 @@ function App() {
             });
           }
         }
-      }, 40);
+      };
 
-      return () => clearTimeout(scrollTimer);
+      const timer1 = setTimeout(doScroll, 60);
+      const timer2 = setTimeout(doScroll, 160);
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
     }
   }, [selectedOption, currentIdiom, isFlipped, quizMode]);
 
