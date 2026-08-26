@@ -108,6 +108,7 @@ function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const headerRef = useRef(null);
   const modeBarRef = useRef(null);
+  const actionButtonsRef = useRef(null);
   const [calculatedMarginTop, setCalculatedMarginTop] = useState(0);
 
   const searchMatchedIdioms = (searchQuery && searchQuery.trim() !== '') 
@@ -196,22 +197,43 @@ function App() {
   const cardBackInnerRef = useRef(null);
   const [cardHeight, setCardHeight] = useState('340px');
 
+  // Dynamic Height & Auto Scroll into view (Aligned with 政治理论标准)
   useEffect(() => {
-    // Small timeout to allow DOM to render new content before measuring
-    setTimeout(() => {
-      if (cardBackInnerRef.current) {
-        // Measure the height required by the back of the card
-        const contentHeight = cardBackInnerRef.current.scrollHeight;
-        // Enforce a minimum height of 340px for the back card to prevent squishing
-        setCardHeight(`${Math.max(340, contentHeight)}px`);
-      }
-    }, 50);
+    if (cardBackInnerRef.current) {
+      const contentHeight = cardBackInnerRef.current.scrollHeight;
+      setCardHeight(`${Math.max(340, contentHeight)}px`);
+    }
+
+    if (selectedOption !== null) {
+      const scrollTimer = setTimeout(() => {
+        const actionBtnEl = actionButtonsRef.current;
+        const floatingBarEl = document.querySelector('.floating-mode-bar');
+
+        if (actionBtnEl && floatingBarEl) {
+          const btnRect = actionBtnEl.getBoundingClientRect();
+          const floatingRect = floatingBarEl.getBoundingClientRect();
+          
+          // 目标下间距：10px
+          const targetGap = 10;
+          const diff = btnRect.bottom - (floatingRect.top - targetGap);
+          
+          if (diff > 2) {
+            window.scrollBy({
+              top: diff,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }, 40);
+
+      return () => clearTimeout(scrollTimer);
+    }
   }, [selectedOption, currentIdiom, isFlipped, quizMode]);
 
   // Precise Vertical Centering Logic
   useEffect(() => {
     const calculateMargin = () => {
-      if (headerRef.current && modeBarRef.current && !isSearchOpen) {
+      if (headerRef.current && modeBarRef.current && searchQuery.trim() === '') {
         const headerRect = headerRef.current.getBoundingClientRect();
         const modeBarRect = modeBarRef.current.getBoundingClientRect();
         const availableHeight = modeBarRect.top - headerRect.bottom;
@@ -220,7 +242,7 @@ function App() {
         const defaultCardHeight = 340;
         let marginTop = (availableHeight - defaultCardHeight) / 2;
         
-        // Add a small offset (e.g. 20px) to make it slightly above exact center, often looks better visually
+        // Add a small offset (e.g. 20px) to make it slightly above exact center, looks better visually
         marginTop -= 20;
         
         if (marginTop < 0) marginTop = 0;
@@ -232,7 +254,6 @@ function App() {
     calculateMargin();
     window.addEventListener('resize', calculateMargin);
     
-    // Also observe the app-container if possible
     const observer = new ResizeObserver(() => {
       calculateMargin();
     });
@@ -245,7 +266,7 @@ function App() {
       window.removeEventListener('resize', calculateMargin);
       observer.disconnect();
     };
-  }, [isSearchOpen]);
+  }, [searchQuery, isSearchOpen]);
 
   useEffect(() => {
     if (idioms.length > 0 && currentIdiom) {
@@ -630,7 +651,7 @@ function App() {
           </div>
         ) : (
           <>
-            <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: cardHeight, marginTop: !isFlipped ? `${calculatedMarginTop}px` : undefined }} onClick={() => setIsFlipped(!isFlipped)}>
+            <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: !isFlipped ? `${calculatedMarginTop}px` : undefined }} onClick={() => setIsFlipped(!isFlipped)}>
           <div className={`card ${isFlipped ? 'flipped' : ''}`}>
             <div className="card-front">
               {quizMode === 'sentence' ? (
@@ -756,7 +777,10 @@ function App() {
           </div>
         </div>
 
-        <div className={`action-buttons ${(!isFlipped || selectedOption === null) ? 'hidden' : ''}`}>
+        <div 
+          ref={actionButtonsRef}
+          className={`action-buttons ${(!isFlipped || selectedOption === null) ? 'hidden' : ''}`}
+        >
           <button className="btn btn-prev" onClick={handlePrev} disabled={history.length === 0}>
             上一题
           </button>

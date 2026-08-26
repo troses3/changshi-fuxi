@@ -117,27 +117,30 @@ body {
 }
 
 .progress-container {
-  background: rgba(255, 255, 255, 0.8);
-  padding: 1rem;
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.65rem 0.85rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 
 .progress-bar {
   width: 100%;
-  height: 8px;
+  height: 6px;
   background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
+  border-radius: 3px;
   overflow: hidden;
-  margin-bottom: 1rem;
+  margin-bottom: 0.35rem;
 }
 
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--accent-color), var(--success));
-  border-radius: 4px;
+  border-radius: 3px;
   transition: width 0.5s ease-in-out;
 }
 
@@ -211,49 +214,13 @@ body {
   font-weight: 700;
 }
 
-.mode-toggle {
-  display: flex;
-  align-items: center; /* Vertically center buttons and divider */
-  background: rgba(0, 0, 0, 0.05);
-  padding: 0.25rem;
-  border-radius: 20px;
-  margin-top: 0.5rem;
-  width: fit-content;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.mode-divider {
-  width: 1px;
-  height: 14px;
-  background-color: rgba(0, 0, 0, 0.12); /* Subtle light gray line */
-  margin: 0 0.6rem; /* Symmetric margins */
-}
-
-.mode-btn {
-  padding: 0.4rem 1.2rem;
-  margin: 0; /* Reset default browser margins */
-  border: none;
-  background: none;
-  border-radius: 16px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.mode-btn.active {
-  background: white;
-  color: var(--accent-color);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
 .main-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
   perspective: 1000px;
 }
 
@@ -408,9 +375,11 @@ body {
 
 .action-buttons {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
   width: 100%;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  margin-top: 0;
+  padding-bottom: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .action-buttons.hidden {
@@ -421,15 +390,15 @@ body {
 
 .btn {
   flex: 1;
-  padding: 0.7rem 1rem;
+  padding: 0.65rem 0.5rem;
   border: none;
   border-radius: 12px;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   color: white;
   transition: all 0.2s ease;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .btn:active:not(:disabled) {
