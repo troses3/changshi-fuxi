@@ -790,7 +790,9 @@ export default function App() {
                         }}
                         disabled={selectedQuizOption !== null}
                       >
-                        <span style={{ fontWeight: '700', marginRight: '0.5rem' }}>{opt.key}. </span>
+                        <span className="option-label">
+                          {selectedQuizOption !== null && opt.key === currentItem.answer ? '✓ ' : selectedQuizOption !== null && selectedQuizOption === opt.key ? '✗ ' : `${opt.key}. `}
+                        </span>
                         <span style={{ flex: 1, lineHeight: '1.5' }}>{opt.text}</span>
                       </button>
                     );
@@ -799,11 +801,19 @@ export default function App() {
 
                 {/* 答题后展现权威解析 */}
                 {selectedQuizOption !== null && (
-                  <div className="full-definition-container" style={{ borderLeftColor: selectedQuizOption === currentItem.answer ? '#10b981' : '#ef4444', marginTop: '0.8rem', textAlign: 'left' }}>
-                    <strong style={{ color: selectedQuizOption === currentItem.answer ? '#10b981' : '#ef4444', display: 'block', marginBottom: '0.4rem', fontSize: '1rem' }}>
+                  <div 
+                    className="full-definition-container" 
+                    style={{ 
+                      borderLeftColor: selectedQuizOption === currentItem.answer ? '#10b981' : '#ef4444', 
+                      background: selectedQuizOption === currentItem.answer ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)',
+                      marginTop: '0.8rem', 
+                      textAlign: 'left' 
+                    }}
+                  >
+                    <strong style={{ color: selectedQuizOption === currentItem.answer ? '#065f46' : '#991b1b', display: 'block', marginBottom: '0.4rem', fontSize: '0.98rem' }}>
                       【{selectedQuizOption === currentItem.answer ? '回答正确 ✓' : '回答错误 ✗'}】正确答案是 {currentItem.answer}
                     </strong>
-                    <span style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
+                    <span style={{ whiteSpace: 'pre-wrap', lineHeight: '1.75', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                       {currentItem.analysis}
                     </span>
                   </div>

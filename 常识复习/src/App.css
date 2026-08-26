@@ -694,41 +694,73 @@ body {
 
 .option-btn {
   width: 100%;
-  padding: 0.8rem 1rem;
-  background: #ffffff;
-  border: 1.5px solid #e2e8f0;
+  max-width: 100%;
+  padding: 0.75rem 1rem;
   border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  background: rgba(255, 255, 255, 0.75);
   color: var(--text-primary);
-  font-size: 0.95rem;
+  text-align: left;
+  font-size: 0.92rem;
+  line-height: 1.5;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  text-align: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
   display: flex;
   align-items: flex-start;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
   box-sizing: border-box;
+  min-width: 0;
 }
 
 .option-btn:hover:not(.disabled) {
-  border-color: var(--accent-color);
-  background: #f0f9ff;
+  border-color: var(--accent-color) !important;
+  background: rgba(59, 130, 246, 0.05);
   transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.08);
+}
+
+.option-label {
+  font-weight: 700;
+  color: var(--accent-color);
+  margin-right: 0.5rem;
+  flex-shrink: 0;
 }
 
 .option-btn.correct {
-  background: #ecfdf5 !important;
+  background: rgba(16, 185, 129, 0.15) !important;
   border-color: #10b981 !important;
   color: #065f46 !important;
   font-weight: 600;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15) !important;
+}
+
+.option-btn.correct .option-label {
+  color: #10b981 !important;
 }
 
 .option-btn.incorrect {
-  background: #fef2f2 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
   border-color: #ef4444 !important;
   color: #991b1b !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15) !important;
+}
+
+.option-btn.incorrect .option-label {
+  color: #ef4444 !important;
 }
 
 .option-btn.disabled {
   cursor: default;
+  pointer-events: none;
+}
+
+.option-btn.disabled:not(.correct):not(.incorrect) {
+  opacity: 0.45;
+  background: rgba(0, 0, 0, 0.01);
+  border-color: rgba(0, 0, 0, 0.04);
 }
 
 .action-buttons {
@@ -756,22 +788,37 @@ body {
   cursor: pointer;
   color: white;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
 
 .btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.95);
 }
 
-.btn:disabled {
+.btn-prev {
+  background: rgba(107, 114, 128, 0.7);
+}
+.btn-prev:hover:not(:disabled) { background: rgba(107, 114, 128, 1); }
+.btn-prev:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-.btn-prev { background: #64748b; }
-.btn-unknown { background: var(--danger); }
-.btn-unsure { background: var(--warning); }
-.btn-known { background: var(--success); }
+.btn-unknown {
+  background: rgba(239, 68, 68, 0.8);
+}
+.btn-unknown:hover { background: rgba(239, 68, 68, 1); }
+
+.btn-unsure {
+  background: rgba(245, 158, 11, 0.8);
+}
+.btn-unsure:hover { background: rgba(245, 158, 11, 1); }
+
+.btn-known {
+  background: rgba(16, 185, 129, 0.8);
+}
+.btn-known:hover { background: rgba(16, 185, 129, 1); }
 
 /* 📱 移动端适配 */
 @media (max-width: 600px) {
