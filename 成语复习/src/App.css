@@ -279,7 +279,7 @@ body {
   right: 1.5rem;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
 }
 
@@ -287,6 +287,9 @@ body {
   margin: 0;
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-front-center-content {
@@ -738,13 +741,12 @@ body {
   color: var(--text-secondary);
   background: rgba(0, 0, 0, 0.04);
   padding: 0.25rem 0.65rem;
-  border-radius: 12px;
+  border-radius: 14px;
   margin-bottom: 0.9rem;
-  white-space: normal;
-  word-break: break-word;
-  line-height: 1.35;
-  display: inline-block;
+  white-space: nowrap;
   max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .examples-container {
