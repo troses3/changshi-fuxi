@@ -4,7 +4,7 @@ import './App.css';
 import knowledgeData from './data/knowledge_db.json';
 import questionData from './data/question_db.json';
 
-const STORAGE_KEY = 'cs-fuxi-tracker-v4';
+const STORAGE_KEY = 'cs-fuxi-tracker-v5';
 
 function highlightMatch(text, query) {
   if (!text) return '';
@@ -96,20 +96,28 @@ export default function App() {
   });
   const [selectedCategory, setSelectedCategory] = useState('all');
   
-  // 卡片数据与状态
+  // 卡片数据与状态 (智能合并最新数据库内容与本地用户学习状态)
   const [items, setItems] = useState(() => {
     const initMode = localStorage.getItem('cs-fuxi-mode') || 'knowledge';
     const rawData = initMode === 'knowledge' ? knowledgeData : questionData;
-    const stored = localStorage.getItem(`${STORAGE_KEY}_${initMode}`);
+    const stored = localStorage.getItem(`${STORAGE_KEY}_${initMode}`) || localStorage.getItem(`cs-fuxi-tracker-v4_${initMode}`);
+    const statusMap = {};
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          parsed.forEach(p => {
+            if (p.id && p.status && p.status !== 'new') {
+              statusMap[p.id] = p.status;
+            }
+          });
         }
       } catch (e) {}
     }
-    return rawData.map(item => ({ ...item, status: 'new' }));
+    return rawData.map(item => ({
+      ...item,
+      status: statusMap[item.id] || 'new'
+    }));
   });
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -150,25 +158,25 @@ export default function App() {
   // 初始化加载与模式切换
   useEffect(() => {
     const rawData = activeMode === 'knowledge' ? knowledgeData : questionData;
-    const stored = localStorage.getItem(`${STORAGE_KEY}_${activeMode}`);
-    let loadedItems = [];
+    const stored = localStorage.getItem(`${STORAGE_KEY}_${activeMode}`) || localStorage.getItem(`cs-fuxi-tracker-v4_${activeMode}`);
+    const statusMap = {};
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) {
-          loadedItems = parsed;
+        if (Array.isArray(parsed)) {
+          parsed.forEach(p => {
+            if (p.id && p.status && p.status !== 'new') {
+              statusMap[p.id] = p.status;
+            }
+          });
         }
-      } catch (e) {
-        loadedItems = [];
-      }
+      } catch (e) {}
     }
     
-    if (!loadedItems || loadedItems.length === 0) {
-      loadedItems = rawData.map(item => ({
-        ...item,
-        status: 'new'
-      }));
-    }
+    const loadedItems = rawData.map(item => ({
+      ...item,
+      status: statusMap[item.id] || 'new'
+    }));
 
     setItems(loadedItems);
     
