@@ -2,12 +2,15 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 #root {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
