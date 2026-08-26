@@ -85,6 +85,13 @@ function App() {
   const [currentExample, setCurrentExample] = useState('');
   const [history, setHistory] = useState([]); // Track navigation history
 
+  // New UI states and refs
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const headerRef = useRef(null);
+  const modeBarRef = useRef(null);
+  const [calculatedMarginTop, setCalculatedMarginTop] = useState(0);
+
   useEffect(() => {
     localStorage.setItem('idiom-tracker-random', isRandom);
   }, [isRandom]);
@@ -158,6 +165,45 @@ function App() {
       }
     }, 50);
   }, [selectedOption, currentIdiom, isFlipped, quizMode]);
+
+  // Precise Vertical Centering Logic
+  useEffect(() => {
+    const calculateMargin = () => {
+      if (headerRef.current && modeBarRef.current && !isSearchOpen) {
+        const headerRect = headerRef.current.getBoundingClientRect();
+        const modeBarRect = modeBarRef.current.getBoundingClientRect();
+        const availableHeight = modeBarRect.top - headerRect.bottom;
+        
+        // Use 340 as the base card height for calculating initial center position
+        const defaultCardHeight = 340;
+        let marginTop = (availableHeight - defaultCardHeight) / 2;
+        
+        // Add a small offset (e.g. 20px) to make it slightly above exact center, often looks better visually
+        marginTop -= 20;
+        
+        if (marginTop < 0) marginTop = 0;
+        setCalculatedMarginTop(marginTop);
+      }
+    };
+
+    // Calculate immediately and on resize
+    calculateMargin();
+    window.addEventListener('resize', calculateMargin);
+    
+    // Also observe the app-container if possible
+    const observer = new ResizeObserver(() => {
+      calculateMargin();
+    });
+    
+    if (document.body) {
+      observer.observe(document.body);
+    }
+
+    return () => {
+      window.removeEventListener('resize', calculateMargin);
+      observer.disconnect();
+    };
+  }, [isSearchOpen]);
 
   useEffect(() => {
     if (idioms.length > 0 && currentIdiom) {
@@ -355,11 +401,31 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="header">
-        <h1>
-          <span>📚</span>
-          <span className="title-text">成语题库</span>
-        </h1>
+      <header className="header" ref={headerRef}>
+        <div className="header-nav">
+          <button className="nav-icon-btn reset-btn" onClick={() => {
+            if(window.confirm('确定要重置所有学习进度吗？')) {
+              localStorage.removeItem(STORAGE_KEY);
+              window.location.reload();
+            }
+          }} title="重置进度">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+            </svg>
+          </button>
+          
+          <h1>
+            <span className="title-text">成语题库</span>
+          </h1>
+
+          <button className="nav-icon-btn search-btn" onClick={() => setIsSearchOpen(!isSearchOpen)} title="搜索成语">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
+        </div>
         <div className="progress-container">
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `${progress}%` }}></div>
@@ -397,16 +463,49 @@ function App() {
               总计: <span className="stat-count">{total}</span>
             </button>
           </div>
-          <div className="mode-toggle">
-            <button className={`mode-btn ${quizMode === 'meaning' ? 'active' : ''}`} onClick={() => setQuizMode('meaning')}>释义模式</button>
-            <button className={`mode-btn ${quizMode === 'sentence' ? 'active' : ''}`} onClick={() => setQuizMode('sentence')}>例句模式</button><span className="mode-divider"></span><button className={`mode-btn ${!isRandom ? 'active' : ''}`} onClick={() => setIsRandom(false)}>顺序</button>
-            <button className={`mode-btn ${isRandom ? 'active' : ''}`} onClick={() => setIsRandom(true)}>随机</button>
-          </div>
         </div>
       </header>
 
       <main className="main-content">
-        <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: cardHeight }} onClick={() => setIsFlipped(!isFlipped)}>
+        {isSearchOpen ? (
+          <div className="search-knowledge-view">
+            <div className="search-input-wrapper">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="搜索成语..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+              {searchQuery && (
+                <button className="clear-search-btn" onClick={() => setSearchQuery('')}>×</button>
+              )}
+            </div>
+            <div className="search-results">
+              {idioms.filter(idiom => idiom.word.includes(searchQuery) || idiom.meaning.includes(searchQuery)).map((idiom, idx) => (
+                <div key={idx} className="search-result-item">
+                  <div className="search-result-header">
+                    <span className="search-result-word">
+                      {idiom.word.split('').map((char, i) => 
+                        searchQuery.includes(char) ? <span key={i} className="highlight">{char}</span> : char
+                      )}
+                    </span>
+                    <span className={`search-result-status status-${idiom.status}`}>
+                      {idiom.status === 'known' ? '认识' : idiom.status === 'unsure' ? '模糊' : idiom.status === 'unknown' ? '不认识' : '未学'}
+                    </span>
+                  </div>
+                  <div className="search-result-meaning">{idiom.meaning}</div>
+                </div>
+              ))}
+              {idioms.filter(idiom => idiom.word.includes(searchQuery) || idiom.meaning.includes(searchQuery)).length === 0 && (
+                <div className="no-results">没有找到匹配的内容</div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: cardHeight, marginTop: !isFlipped ? `${calculatedMarginTop}px` : undefined }} onClick={() => setIsFlipped(!isFlipped)}>
           <div className={`card ${isFlipped ? 'flipped' : ''}`}>
             <div className="card-front">
               {quizMode === 'sentence' ? (
@@ -546,22 +645,19 @@ function App() {
             认识
           </button>
         </div>
-        
-        <div className="controls">
-          <button className="btn-text" onClick={() => {
-            if(window.confirm('确定要重置所有学习进度吗？')) {
-              localStorage.removeItem(STORAGE_KEY);
-              window.location.reload();
-            }
-          }}>
-            <svg className="reset-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
-              <path d="M21 3v5h-5"/>
-            </svg>
-            <span className="reset-text">重置进度</span>
-          </button>
-        </div>
+        </>
+        )}
       </main>
+
+      <nav className="floating-mode-bar" ref={modeBarRef}>
+        <div className="mode-toggle">
+          <button className={`mode-btn ${quizMode === 'meaning' ? 'active' : ''}`} onClick={() => setQuizMode('meaning')}>释义模式</button>
+          <button className={`mode-btn ${quizMode === 'sentence' ? 'active' : ''}`} onClick={() => setQuizMode('sentence')}>例句模式</button>
+          <span className="mode-divider"></span>
+          <button className={`mode-btn ${!isRandom ? 'active' : ''}`} onClick={() => setIsRandom(false)}>顺序</button>
+          <button className={`mode-btn ${isRandom ? 'active' : ''}`} onClick={() => setIsRandom(true)}>随机</button>
+        </div>
+      </nav>
     </div>
   );
 }
