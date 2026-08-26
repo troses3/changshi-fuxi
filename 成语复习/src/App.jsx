@@ -70,6 +70,24 @@ const getShortMeaning = (meaning) => {
   return meaning;
 };
 
+const renderHighlightedText = (text, query) => {
+  if (!text) return '';
+  if (!query || !query.trim()) return text;
+
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+  const parts = text.split(regex);
+  return parts.map((part, i) => {
+    return regex.test(part) ? (
+      <span key={i} className="highlight">
+        {part}
+      </span>
+    ) : (
+      part
+    );
+  });
+};
+
 function App() {
   const [idioms, setIdioms] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -91,6 +109,30 @@ function App() {
   const headerRef = useRef(null);
   const modeBarRef = useRef(null);
   const [calculatedMarginTop, setCalculatedMarginTop] = useState(0);
+
+  const searchMatchedIdioms = (searchQuery && searchQuery.trim() !== '') 
+    ? idioms.filter(item => {
+        const q = searchQuery.trim().toLowerCase();
+        return (
+          item.word.toLowerCase().includes(q) ||
+          (item.meaning && item.meaning.toLowerCase().includes(q)) ||
+          (item.group && item.group.toLowerCase().includes(q)) ||
+          (item.subcategory && item.subcategory.toLowerCase().includes(q))
+        );
+      })
+    : [];
+
+  const handleSelectSearchItem = (targetItem) => {
+    const targetIndex = idioms.findIndex(i => i.word === targetItem.word);
+    if (targetIndex !== -1) {
+      setFilter('all');
+      setSearchQuery('');
+      setIsSearchOpen(false);
+      setCurrentIndex(targetIndex);
+      setIsFlipped(false);
+      setSelectedOption(null);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('idiom-tracker-random', isRandom);
@@ -402,30 +444,94 @@ function App() {
   return (
     <div className="app-container">
       <header className="header" ref={headerRef}>
-        <div className="header-nav">
-          <button className="nav-icon-btn reset-btn" onClick={() => {
-            if(window.confirm('确定要重置所有学习进度吗？')) {
-              localStorage.removeItem(STORAGE_KEY);
-              window.location.reload();
-            }
-          }} title="重置进度">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <div className="header-nav-bar">
+          {/* 左上角：重置当前题库进度 */}
+          <button 
+            className="header-icon-btn reset-header-btn" 
+            title="重置当前题库进度"
+            onClick={() => {
+              if(window.confirm('确定要重置所有学习进度吗？')) {
+                localStorage.removeItem(STORAGE_KEY);
+                window.location.reload();
+              }
+            }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
               <path d="M21 3v5h-5"/>
             </svg>
           </button>
           
-          <h1>
+          {/* 中间：标题 */}
+          <h1 className="header-title">
+            <span className="title-emoji">📚</span>
             <span className="title-text">成语题库</span>
           </h1>
 
-          <button className="nav-icon-btn search-btn" onClick={() => setIsSearchOpen(!isSearchOpen)} title="搜索成语">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          {/* 右上角：搜索按钮 */}
+          <button 
+            className={`header-icon-btn search-header-btn ${(isSearchOpen || searchQuery) ? 'active' : ''}`} 
+            onClick={() => setIsSearchOpen(prev => !prev)} 
+            title="搜索成语"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
           </button>
         </div>
+
+        {/* 顶部展开式搜索栏 */}
+        {(isSearchOpen || searchQuery.trim() !== '') && (
+          <form 
+            className="search-bar-box"
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.target.querySelector('input')?.blur();
+            }}
+          >
+            <svg className="search-box-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="search"
+              enterKeyHint="search"
+              autoFocus
+              className="search-box-input"
+              placeholder={`搜索成语词目、释义 (${idioms.length} 题)...`}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.target.blur();
+                }
+              }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="search-box-clear"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSearchQuery('');
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSearchQuery('');
+                }}
+                title="清空搜索"
+              >
+                ✕
+              </button>
+            )}
+          </form>
+        )}
+
         <div className="progress-container">
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `${progress}%` }}></div>
@@ -467,41 +573,60 @@ function App() {
       </header>
 
       <main className="main-content">
-        {isSearchOpen ? (
+        {searchQuery.trim() !== '' ? (
           <div className="search-knowledge-view">
-            <div className="search-input-wrapper">
-              <input
-                type="text"
-                className="search-input"
-                placeholder="搜索成语..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-              />
-              {searchQuery && (
-                <button className="clear-search-btn" onClick={() => setSearchQuery('')}>×</button>
-              )}
+            <div className="search-results-bar">
+              <span className="search-count-text">
+                共匹配到 <strong>{searchMatchedIdioms.length}</strong> 个成语
+              </span>
+              <button className="search-clear-action-btn" onClick={() => setSearchQuery('')}>
+                清空搜索
+              </button>
             </div>
-            <div className="search-results">
-              {idioms.filter(idiom => idiom.word.includes(searchQuery) || idiom.meaning.includes(searchQuery)).map((idiom, idx) => (
-                <div key={idx} className="search-result-item">
-                  <div className="search-result-header">
-                    <span className="search-result-word">
-                      {idiom.word.split('').map((char, i) => 
-                        searchQuery.includes(char) ? <span key={i} className="highlight">{char}</span> : char
+
+            {searchMatchedIdioms.length === 0 ? (
+              <div className="empty-state-card">
+                <h3>未找到匹配成语</h3>
+                <p>请尝试缩短关键词或搜索其他成语</p>
+                <button className="empty-state-btn" onClick={() => setSearchQuery('')}>
+                  清空搜索
+                </button>
+              </div>
+            ) : (
+              <div className="knowledge-cards-list">
+                {searchMatchedIdioms.map((idiom, idx) => (
+                  <div key={idx} className="knowledge-card" onClick={() => handleSelectSearchItem(idiom)}>
+                    <div className="knowledge-card-top">
+                      <div className="knowledge-chapter-wrap">
+                        <span className="knowledge-chapter-name">{idiom.group}</span>
+                        {idiom.subcategory && <span className="knowledge-group-name">· {idiom.subcategory}</span>}
+                      </div>
+                      <span className={`knowledge-status-tag status-tag-${idiom.status}`}>
+                        {idiom.status === 'known' ? '已掌握' : idiom.status === 'unsure' ? '模糊' : idiom.status === 'unknown' ? '生词' : '未学'}
+                      </span>
+                    </div>
+                    <div className="search-result-word-row" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0.2rem 0' }}>
+                      <strong className="search-result-word" style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+                        {renderHighlightedText(idiom.word, searchQuery)}
+                      </strong>
+                      {idiom.color && idiom.color !== '中性' && (
+                        <span className={`color-tag ${idiom.color === '贬义' ? 'negative' : 'positive'}`} style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}>
+                          {idiom.color}
+                        </span>
                       )}
-                    </span>
-                    <span className={`search-result-status status-${idiom.status}`}>
-                      {idiom.status === 'known' ? '认识' : idiom.status === 'unsure' ? '模糊' : idiom.status === 'unknown' ? '不认识' : '未学'}
-                    </span>
+                    </div>
+                    <div className="search-result-meaning" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                      {renderHighlightedText(idiom.meaning, searchQuery)}
+                    </div>
+                    {idiom.examples && idiom.examples.length > 0 && (
+                      <div className="search-result-example" style={{ fontSize: '0.85rem', color: '#64748b', background: 'rgba(0,0,0,0.02)', padding: '0.4rem 0.6rem', borderRadius: '8px', borderLeft: '2px solid var(--accent-color)', marginTop: '0.3rem' }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>例句：</strong>{renderHighlightedText(idiom.examples[0], searchQuery)}
+                      </div>
+                    )}
                   </div>
-                  <div className="search-result-meaning">{idiom.meaning}</div>
-                </div>
-              ))}
-              {idioms.filter(idiom => idiom.word.includes(searchQuery) || idiom.meaning.includes(searchQuery)).length === 0 && (
-                <div className="no-results">没有找到匹配的内容</div>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -649,14 +774,23 @@ function App() {
         )}
       </main>
 
+      {/* 底部悬浮模式栏（极简单层设计，无多层套娃） */}
       <nav className="floating-mode-bar" ref={modeBarRef}>
-        <div className="mode-toggle">
-          <button className={`mode-btn ${quizMode === 'meaning' ? 'active' : ''}`} onClick={() => setQuizMode('meaning')}>释义模式</button>
-          <button className={`mode-btn ${quizMode === 'sentence' ? 'active' : ''}`} onClick={() => setQuizMode('sentence')}>例句模式</button>
-          <span className="mode-divider"></span>
-          <button className={`mode-btn ${!isRandom ? 'active' : ''}`} onClick={() => setIsRandom(false)}>顺序</button>
-          <button className={`mode-btn ${isRandom ? 'active' : ''}`} onClick={() => setIsRandom(true)}>随机</button>
-        </div>
+        <button className={`mode-btn ${quizMode === 'meaning' ? 'active' : ''}`} onClick={() => setQuizMode('meaning')}>
+          释义模式
+        </button>
+        <button className={`mode-btn ${quizMode === 'sentence' ? 'active' : ''}`} onClick={() => setQuizMode('sentence')}>
+          例句模式
+        </button>
+
+        <span className="mode-divider"></span>
+
+        <button className={`mode-btn random-btn ${!isRandom ? 'active' : ''}`} onClick={() => setIsRandom(false)}>
+          顺序
+        </button>
+        <button className={`mode-btn random-btn ${isRandom ? 'active' : ''}`} onClick={() => setIsRandom(true)}>
+          随机
+        </button>
       </nav>
     </div>
   );
