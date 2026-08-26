@@ -255,8 +255,6 @@ body {
   padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
   background: var(--card-bg);
   border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.08);
@@ -267,7 +265,7 @@ body {
   padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   position: absolute;
   width: 100%;
@@ -275,10 +273,13 @@ body {
 }
 
 .card-top-bar {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.5rem;
+  right: 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
 }
 
 .card-front-center-content {
@@ -287,7 +288,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 100%;
-  flex: 1;
+  padding-top: 1.2rem;
 }
 
 .status-badge-inline {
