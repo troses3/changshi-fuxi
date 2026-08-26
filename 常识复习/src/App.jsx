@@ -17,6 +17,57 @@ function highlightMatch(text, query) {
   );
 }
 
+/**
+ * 智能分段渲染：将纯文本按 \n 拆分，识别结构化行（标题、编号、选项解析等），
+ * 渲染为带视觉层级的段落组件。
+ */
+function formatContent(text) {
+  if (!text) return null;
+  const raw = String(text).trim();
+  if (!raw) return null;
+
+  const lines = raw.split('\n').filter(l => l.trim() !== '');
+
+  // 如果只有一行且很短，直接返回
+  if (lines.length === 1) {
+    return <p className="fc-para">{lines[0]}</p>;
+  }
+
+  return lines.map((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed) return null;
+
+    // 【xxx】 开头的段落标题
+    if (/^【[^】]+】/.test(trimmed)) {
+      return <p key={i} className="fc-section-header">{trimmed}</p>;
+    }
+
+    // （一）（二）... 中文大编号
+    if (/^[（(][一二三四五六七八九十]+[）)]/.test(trimmed)) {
+      return <p key={i} className="fc-major-num">{trimmed}</p>;
+    }
+
+    // (1)(2)... 或 1. 2. 数字编号
+    if (/^[（(]\d+[）)]/.test(trimmed) || /^\d+[.．、]/.test(trimmed)) {
+      return <p key={i} className="fc-num-item">{trimmed}</p>;
+    }
+
+    // A项/B项/C项/D项 选项解析行
+    if (/^[A-Da-d][项．.]/.test(trimmed)) {
+      const isCorrect = /正确/.test(trimmed);
+      const isWrong = /错误/.test(trimmed);
+      return (
+        <p key={i} className={`fc-option-line ${isCorrect ? 'fc-correct' : ''} ${isWrong ? 'fc-wrong' : ''}`}>
+          {trimmed}
+        </p>
+      );
+    }
+
+    // 普通段落
+    return <p key={i} className="fc-para">{trimmed}</p>;
+  });
+}
+
 export default function App() {
   const headerRef = useRef(null);
   const modeBarRef = useRef(null);
@@ -715,11 +766,11 @@ export default function App() {
 
                       <div className="card-back-content" style={{ width: '100%' }}>
                         <h3>{currentItem.title}</h3>
-                        <div className="full-definition-container">
+                        <div className="full-definition-container fc-container">
                           <strong style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--text-primary)' }}>
                             【{currentItem.title}】的考点精释
                           </strong>
-                          <span style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>{currentItem.content}</span>
+                          {formatContent(currentItem.content)}
                         </div>
                       </div>
                     </div>
@@ -802,7 +853,7 @@ export default function App() {
                 {/* 答题后展现权威解析 */}
                 {selectedQuizOption !== null && (
                   <div 
-                    className="full-definition-container" 
+                    className="full-definition-container fc-container" 
                     style={{ 
                       borderLeftColor: selectedQuizOption === currentItem.answer ? '#10b981' : '#ef4444', 
                       background: selectedQuizOption === currentItem.answer ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)',
@@ -813,9 +864,7 @@ export default function App() {
                     <strong style={{ color: selectedQuizOption === currentItem.answer ? '#065f46' : '#991b1b', display: 'block', marginBottom: '0.4rem', fontSize: '0.98rem' }}>
                       【{selectedQuizOption === currentItem.answer ? '回答正确 ✓' : '回答错误 ✗'}】正确答案是 {currentItem.answer}
                     </strong>
-                    <span style={{ whiteSpace: 'pre-wrap', lineHeight: '1.75', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                      {currentItem.analysis}
-                    </span>
+                    {formatContent(currentItem.analysis)}
                   </div>
                 )}
               </div>
