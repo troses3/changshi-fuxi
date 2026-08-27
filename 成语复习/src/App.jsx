@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { initialIdioms } from './data/idioms';
 import './App.css';
 
-const STORAGE_KEY = 'idiom-tracker-data-v4';
+const STORAGE_KEY = 'idiom-tracker-data-v5';
 
 const getShortMeaning = (meaning) => {
   if (!meaning) return "";
@@ -89,7 +89,32 @@ const renderHighlightedText = (text, query) => {
 };
 
 function App() {
-  const [idioms, setIdioms] = useState([]);
+  // 智能合并最新成语数据库与本地用户学习状态
+  const [idioms, setIdioms] = useState(() => {
+    const stored = localStorage.getItem(STORAGE_KEY) || 
+                   localStorage.getItem('idiom-tracker-data-v4') || 
+                   localStorage.getItem('idiom-tracker-data-v3') || 
+                   localStorage.getItem('idiom-tracker-data-v2') || 
+                   localStorage.getItem('idiom-tracker-data');
+    const statusMap = {};
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(p => {
+            if (p.word && p.status && p.status !== 'new') {
+              statusMap[p.word] = p.status;
+            }
+          });
+        }
+      } catch (e) {}
+    }
+    return initialIdioms.map(item => ({
+      ...item,
+      status: statusMap[item.word] || 'new'
+    }));
+  });
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [stats, setStats] = useState({ known: 0, unsure: 0, unknown: 0 });
@@ -145,26 +170,11 @@ function App() {
   }, [quizMode]);
 
   useEffect(() => {
-    // Load from local storage or use initial
-    const stored = localStorage.getItem(STORAGE_KEY);
-    let loadedIdioms = [];
-    if (stored) {
-      loadedIdioms = JSON.parse(stored);
-    } else {
-      loadedIdioms = initialIdioms.map(idiom => ({
-        ...idiom,
-        status: 'new' // 'new', 'known', 'unsure', 'unknown'
-      }));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedIdioms));
-    }
-    setIdioms(loadedIdioms);
-
     // Pick a random starting index if random mode is active on load
     const isRandomStored = localStorage.getItem('idiom-tracker-random') === 'true';
-    if (isRandomStored && loadedIdioms.length > 0) {
-      // Prioritize idioms that are not yet marked as 'known'
+    if (isRandomStored && idioms.length > 0) {
       const candidateIndices = [];
-      loadedIdioms.forEach((idiom, index) => {
+      idioms.forEach((idiom, index) => {
         if (idiom.status !== 'known') {
           candidateIndices.push(index);
         }
@@ -174,7 +184,7 @@ function App() {
         const randIndex = candidateIndices[Math.floor(Math.random() * candidateIndices.length)];
         setCurrentIndex(randIndex);
       } else {
-        const randIndex = Math.floor(Math.random() * loadedIdioms.length);
+        const randIndex = Math.floor(Math.random() * idioms.length);
         setCurrentIndex(randIndex);
       }
     }
