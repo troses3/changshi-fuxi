@@ -248,7 +248,7 @@ export default function App() {
   useEffect(() => {
     const calcMargin = () => {
       if (headerRef.current && modeBarRef.current && searchQuery.trim() === '') {
-        const headerBottom = headerRef.current.getBoundingClientRect().bottom;
+        const headerBottom = headerRef.current.getBoundingClientRect().bottom + window.scrollY;
         const modeBarTop = modeBarRef.current.getBoundingClientRect().top;
         const space = modeBarTop - headerBottom;
         const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -302,7 +302,7 @@ export default function App() {
       setCardHeight(`${Math.max(340, contentHeight)}px`);
     }
 
-    if (selectedQuizOption !== null || (activeMode === 'knowledge' && isFlipped)) {
+    if (isFlipped && (selectedQuizOption !== null || activeMode === 'knowledge')) {
       const scrollTimer = setTimeout(() => {
         const actionBtnEl = actionButtonsRef.current;
         const floatingBarEl = document.querySelector('.floating-mode-bar');
@@ -323,6 +323,9 @@ export default function App() {
       }, 50);
 
       return () => clearTimeout(scrollTimer);
+    } else if (!isFlipped) {
+      // 翻转回正面时平滑复位至顶部，确保正面卡片绝对几何居中
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [selectedQuizOption, currentItem, isFlipped, activeMode]);
 
