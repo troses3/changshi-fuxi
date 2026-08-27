@@ -106,6 +106,7 @@ function App() {
   // New UI states and refs
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const headerRef = useRef(null);
   const modeBarRef = useRef(null);
   const actionButtonsRef = useRef(null);
@@ -230,20 +231,28 @@ function App() {
     }
   }, [selectedOption, currentIdiom, isFlipped, quizMode]);
 
-  // Precise Vertical Centering Logic (Dynamically adapts in Step 1 & Step 2)
+  // Precise Vertical Centering Logic (True Geometric Symmetry across all 3 steps)
   useEffect(() => {
     const calculateMargin = () => {
       if (headerRef.current && modeBarRef.current && searchQuery.trim() === '') {
-        const headerRect = headerRef.current.getBoundingClientRect();
-        const modeBarRect = modeBarRef.current.getBoundingClientRect();
-        const space = modeBarRect.top - headerRect.bottom;
+        const headerBottom = headerRef.current.getBoundingClientRect().bottom;
+        const modeBarTop = modeBarRef.current.getBoundingClientRect().top;
+        const space = modeBarTop - headerBottom;
         const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
         const gapPx = 0.75 * rem;
 
         let currentHeight = 340;
         if (isFlipped && cardBackInnerRef.current) {
-          if (selectedOption !== null) return;
-          currentHeight = Math.max(340, cardBackInnerRef.current.scrollHeight);
+          const cardH = Math.max(340, cardBackInnerRef.current.scrollHeight);
+          if (selectedOption !== null) {
+            const buttonsH = (actionButtonsRef.current && actionButtonsRef.current.offsetHeight) ? actionButtonsRef.current.offsetHeight : 44;
+            const totalContentHeight = cardH + gapPx + buttonsH;
+            let margin = (space - totalContentHeight) / 2 - gapPx;
+            setCalculatedMarginTop(Math.max(0, margin));
+            return;
+          } else {
+            currentHeight = cardH;
+          }
         }
 
         let margin = (space - currentHeight) / 2 - gapPx;
@@ -258,12 +267,13 @@ function App() {
     if (headerRef.current) observer.observe(headerRef.current);
     if (modeBarRef.current) observer.observe(modeBarRef.current);
     if (cardBackInnerRef.current) observer.observe(cardBackInnerRef.current);
+    if (actionButtonsRef.current) observer.observe(actionButtonsRef.current);
 
     return () => {
       window.removeEventListener('resize', calculateMargin);
       observer.disconnect();
     };
-  }, [searchQuery, isSearchOpen, isFlipped, currentIndex, quizMode]);
+  }, [searchQuery, isSearchOpen, isPanelOpen, isFlipped, selectedOption, currentIndex, quizMode]);
 
   useEffect(() => {
     if (idioms.length > 0 && currentIdiom) {
@@ -480,11 +490,22 @@ function App() {
             </svg>
           </button>
           
-          {/* 中间：标题 */}
-          <h1 className="header-title">
-            <span className="title-emoji">📚</span>
-            <span className="title-text">成语题库</span>
-          </h1>
+          {/* 中间：可交互的沉浸指示胶囊（点击展开/收起题型与掌握度面板） */}
+          <button 
+            className={`header-meta-pill ${isPanelOpen ? 'active' : ''}`}
+            onClick={() => setIsPanelOpen(prev => !prev)}
+            title={isPanelOpen ? "收起筛选面板" : "展开题型与掌握度面板"}
+          >
+            <span className="pill-db-name">📚 成语题库</span>
+            <span className="pill-divider">·</span>
+            <span className="pill-cat-name">{quizMode === 'meaning' ? '🎯 看词选义' : '📖 选词填空'}</span>
+            <span className="pill-progress-text">({currentIndex + 1}/{idioms.length})</span>
+            <span className={`pill-chevron ${isPanelOpen ? 'open' : ''}`}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </span>
+          </button>
 
           {/* 右上角：搜索按钮 */}
           <button 
@@ -550,44 +571,47 @@ function App() {
           </form>
         )}
 
-        <div className="progress-container">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+        {/* 沉浸式下拉抽屉面板 */}
+        {isPanelOpen && (
+          <div className="progress-container panel-drawer-open">
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+            </div>
+            <div className="stats">
+              <button 
+                className={`stat-item ${filter === 'known' ? 'active-known' : ''}`}
+                onClick={() => handleFilterClick('known')}
+                title="只复习已掌握"
+              >
+                <span className="dot dot-known"></span>
+                已掌握: <span className="stat-count">{stats.known}</span>
+              </button>
+              <button 
+                className={`stat-item ${filter === 'unsure' ? 'active-unsure' : ''}`}
+                onClick={() => handleFilterClick('unsure')}
+                title="只复习模糊"
+              >
+                <span className="dot dot-unsure"></span>
+                模糊: <span className="stat-count">{stats.unsure}</span>
+              </button>
+              <button 
+                className={`stat-item ${filter === 'unknown' ? 'active-unknown' : ''}`}
+                onClick={() => handleFilterClick('unknown')}
+                title="只复习生词"
+              >
+                <span className="dot dot-unknown"></span>
+                生词: <span className="stat-count">{stats.unknown}</span>
+              </button>
+              <button 
+                className={`stat-item ${filter === 'all' ? 'active-all' : ''}`}
+                onClick={() => setFilter('all')}
+                title="查看全部"
+              >
+                总计: <span className="stat-count">{total}</span>
+              </button>
+            </div>
           </div>
-          <div className="stats">
-            <button 
-              className={`stat-item ${filter === 'known' ? 'active-known' : ''}`}
-              onClick={() => handleFilterClick('known')}
-              title="只复习已掌握"
-            >
-              <span className="dot dot-known"></span>
-              已掌握: <span className="stat-count">{stats.known}</span>
-            </button>
-            <button 
-              className={`stat-item ${filter === 'unsure' ? 'active-unsure' : ''}`}
-              onClick={() => handleFilterClick('unsure')}
-              title="只复习模糊"
-            >
-              <span className="dot dot-unsure"></span>
-              模糊: <span className="stat-count">{stats.unsure}</span>
-            </button>
-            <button 
-              className={`stat-item ${filter === 'unknown' ? 'active-unknown' : ''}`}
-              onClick={() => handleFilterClick('unknown')}
-              title="只复习生词"
-            >
-              <span className="dot dot-unknown"></span>
-              生词: <span className="stat-count">{stats.unknown}</span>
-            </button>
-            <button 
-              className={`stat-item ${filter === 'all' ? 'active-all' : ''}`}
-              onClick={() => setFilter('all')}
-              title="查看全部"
-            >
-              总计: <span className="stat-count">{total}</span>
-            </button>
-          </div>
-        </div>
+        )}
       </header>
 
       <main className="main-content">

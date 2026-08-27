@@ -86,8 +86,9 @@ export default function App() {
   const [cardHeight, setCardHeight] = useState('340px');
   const [calculatedMarginTop, setCalculatedMarginTop] = useState(0);
 
-  // 搜索相关状态
+  // 搜索与面板相关状态
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // 数据源与列表状态
@@ -243,7 +244,7 @@ export default function App() {
     }
   }, [items, activeMode]);
 
-  // 动态居中计算 (Precise Vertical Centering - Dynamic in Step 1 & Step 2)
+  // 动态居中计算 (True Geometric Symmetry across all 3 steps)
   useEffect(() => {
     const calcMargin = () => {
       if (headerRef.current && modeBarRef.current && searchQuery.trim() === '') {
@@ -253,12 +254,29 @@ export default function App() {
         const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
         const gapPx = 0.75 * rem;
 
-        let currentHeight = 340;
-        if (activeMode === 'knowledge' && isFlipped && cardBackInnerRef.current) {
-          currentHeight = Math.max(340, cardBackInnerRef.current.scrollHeight);
+        let contentHeight = 340;
+        if (activeMode === 'knowledge') {
+          if (isFlipped && cardBackInnerRef.current) {
+            const cardH = Math.max(340, cardBackInnerRef.current.scrollHeight);
+            const buttonsH = (actionButtonsRef.current && actionButtonsRef.current.offsetHeight) ? actionButtonsRef.current.offsetHeight : 44;
+            contentHeight = cardH + gapPx + buttonsH;
+          } else {
+            contentHeight = 340;
+          }
+        } else {
+          // 真题模式
+          if (cardBackInnerRef.current) {
+            const cardH = Math.max(340, cardBackInnerRef.current.scrollHeight);
+            if (selectedQuizOption !== null) {
+              const buttonsH = (actionButtonsRef.current && actionButtonsRef.current.offsetHeight) ? actionButtonsRef.current.offsetHeight : 44;
+              contentHeight = cardH + gapPx + buttonsH;
+            } else {
+              contentHeight = cardH;
+            }
+          }
         }
 
-        let margin = (space - currentHeight) / 2 - gapPx;
+        let margin = (space - contentHeight) / 2 - gapPx;
         setCalculatedMarginTop(Math.max(0, margin));
       }
     };
@@ -269,12 +287,13 @@ export default function App() {
     if (headerRef.current) observer.observe(headerRef.current);
     if (modeBarRef.current) observer.observe(modeBarRef.current);
     if (cardBackInnerRef.current) observer.observe(cardBackInnerRef.current);
+    if (actionButtonsRef.current) observer.observe(actionButtonsRef.current);
 
     return () => {
       window.removeEventListener('resize', calcMargin);
       observer.disconnect();
     };
-  }, [searchQuery, selectedCategory, activeMode, isSearchOpen, isFlipped, selectedQuizOption, currentIndex]);
+  }, [searchQuery, selectedCategory, activeMode, isSearchOpen, isPanelOpen, isFlipped, selectedQuizOption, currentIndex]);
 
   // 动态测高与自动平滑滚动 (Height Measurement & Auto Scroll Effect)
   useEffect(() => {
@@ -526,11 +545,31 @@ export default function App() {
             </svg>
           </button>
           
-          {/* 中间：标题 */}
-          <h1 className="header-title">
-            <span className="title-emoji">📚</span>
-            <span className="title-text">常识题库</span>
-          </h1>
+          {/* 中间：可交互的沉浸指示胶囊（点击展开/收起题库与筛选控制面板） */}
+          <button 
+            className={`header-meta-pill ${isPanelOpen ? 'active' : ''}`}
+            onClick={() => setIsPanelOpen(prev => !prev)}
+            title={isPanelOpen ? "收起筛选面板" : "展开题库与章节面板"}
+          >
+            <span className="pill-db-name">{activeMode === 'knowledge' ? '📖 考点模式' : '✍️ 真题演练'}</span>
+            <span className="pill-divider">·</span>
+            <span className="pill-cat-name">
+              {selectedCategory === 'all' ? '全部章节' : (
+                selectedCategory.includes('法律') ? '⚖️ 法律' :
+                selectedCategory.includes('人文') ? '📜 人文历史' :
+                selectedCategory.includes('科技') ? '🔬 科技' :
+                selectedCategory.includes('地理') ? '🌍 地理' :
+                selectedCategory.includes('经济') ? '📈 经济' :
+                selectedCategory.length > 5 ? selectedCategory.slice(0, 4) + '...' : selectedCategory
+              )}
+            </span>
+            <span className="pill-progress-text">({safeIndex + 1}/{currentCategoryItems.length})</span>
+            <span className={`pill-chevron ${isPanelOpen ? 'open' : ''}`}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </span>
+          </button>
 
           {/* 右上角：搜索按钮 */}
           <button 
@@ -596,70 +635,73 @@ export default function App() {
           </form>
         )}
 
-        <div className="progress-container">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-          </div>
-          
-          <div className="stats">
-            <button 
-              className={`stat-item ${filter === 'known' ? 'active-known' : ''}`}
-              onClick={() => handleFilterClick('known')}
-              title="只复习已掌握"
-            >
-              <span className="dot dot-known"></span>
-              已掌握: <span className="stat-count">{stats.known}</span>
-            </button>
+        {/* 沉浸式下拉抽屉面板 */}
+        {isPanelOpen && (
+          <div className="progress-container panel-drawer-open">
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+            </div>
+            
+            <div className="stats">
+              <button 
+                className={`stat-item ${filter === 'known' ? 'active-known' : ''}`}
+                onClick={() => handleFilterClick('known')}
+                title="只复习已掌握"
+              >
+                <span className="dot dot-known"></span>
+                已掌握: <span className="stat-count">{stats.known}</span>
+              </button>
 
-            <button 
-              className={`stat-item ${filter === 'unsure' ? 'active-unsure' : ''}`}
-              onClick={() => handleFilterClick('unsure')}
-              title="只复习模糊"
-            >
-              <span className="dot dot-unsure"></span>
-              模糊: <span className="stat-count">{stats.unsure}</span>
-            </button>
+              <button 
+                className={`stat-item ${filter === 'unsure' ? 'active-unsure' : ''}`}
+                onClick={() => handleFilterClick('unsure')}
+                title="只复习模糊"
+              >
+                <span className="dot dot-unsure"></span>
+                模糊: <span className="stat-count">{stats.unsure}</span>
+              </button>
 
-            <button 
-              className={`stat-item ${filter === 'unknown' ? 'active-unknown' : ''}`}
-              onClick={() => handleFilterClick('unknown')}
-              title="只复习生词"
-            >
-              <span className="dot dot-unknown"></span>
-              生词: <span className="stat-count">{stats.unknown}</span>
-            </button>
+              <button 
+                className={`stat-item ${filter === 'unknown' ? 'active-unknown' : ''}`}
+                onClick={() => handleFilterClick('unknown')}
+                title="只复习生词"
+              >
+                <span className="dot dot-unknown"></span>
+                生词: <span className="stat-count">{stats.unknown}</span>
+              </button>
 
-            <button 
-              className={`stat-item ${filter === 'all' ? 'active-all' : ''}`}
-              onClick={() => setFilter('all')}
-              title="查看全部"
-            >
-              总计: <span className="stat-count">{total}</span>
-            </button>
-          </div>
+              <button 
+                className={`stat-item ${filter === 'all' ? 'active-all' : ''}`}
+                onClick={() => setFilter('all')}
+                title="查看全部"
+              >
+                总计: <span className="stat-count">{total}</span>
+              </button>
+            </div>
 
-          {/* 单行横向滑动章节栏 */}
-          <div className="category-scroll-container">
-            <div className="category-scroll-track">
-              {[
-                { key: 'all', label: '全部章节' },
-                { key: '第一章 法律常识', label: '⚖️ 法律' },
-                { key: '第二章 人文历史常识', label: '📜 人文历史' },
-                { key: '第三章 科技常识', label: '🔬 科技' },
-                { key: '第四章 地理常识', label: '🌍 地理' },
-                { key: '第五章 经济常识', label: '📈 经济' },
-              ].map(cat => (
-                <button
-                  key={cat.key}
-                  className={`cat-chip ${selectedCategory === cat.key ? 'active' : ''}`}
-                  onClick={() => setSelectedCategory(cat.key)}
-                >
-                  {cat.label}
-                </button>
-              ))}
+            {/* 单行横向滑动章节栏 */}
+            <div className="category-scroll-container">
+              <div className="category-scroll-track">
+                {[
+                  { key: 'all', label: '全部章节' },
+                  { key: '第一章 法律常识', label: '⚖️ 法律' },
+                  { key: '第二章 人文历史常识', label: '📜 人文历史' },
+                  { key: '第三章 科技常识', label: '🔬 科技' },
+                  { key: '第四章 地理常识', label: '🌍 地理' },
+                  { key: '第五章 经济常识', label: '📈 经济' },
+                ].map(cat => (
+                  <button
+                    key={cat.key}
+                    className={`cat-chip ${selectedCategory === cat.key ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.key)}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </header>
 
       {/* Main Content */}
