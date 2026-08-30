@@ -91,6 +91,11 @@ export default function App() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // 搜索前进度现场快照与一键返回状态
+  const preSearchStateRef = useRef(null);
+  const skipCategoryResetRef = useRef(false);
+  const [returnToPreSearch, setReturnToPreSearch] = useState(null);
+
   // 数据源与列表状态
   const [activeMode, setActiveMode] = useState(() => {
     return localStorage.getItem('cs-fuxi-mode') || 'knowledge'; // 'knowledge' | 'quiz'
@@ -215,6 +220,12 @@ export default function App() {
   // 分类筛选重置
   useEffect(() => {
     if (currentCategoryItems.length === 0) return;
+    
+    if (skipCategoryResetRef.current) {
+      skipCategoryResetRef.current = false;
+      return;
+    }
+
     if (isRandom) {
       const candidateIndices = [];
       currentCategoryItems.forEach((item, index) => {
@@ -352,23 +363,80 @@ export default function App() {
     }
   });
 
+  const handleOpenSearch = () => {
+    if (!preSearchStateRef.current) {
+      preSearchStateRef.current = {
+        index: currentIndex,
+        category: selectedCategory,
+        filter: filter,
+        activeMode: activeMode,
+        displayIndex: safeIndex + 1,
+        totalInCat: currentCategoryItems.length
+      };
+    }
+    setIsSearchOpen(true);
+  };
+
+  const handleCloseSearch = () => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    // 若未通过搜索结果跳转，则自动恢复搜索前现场
+    if (preSearchStateRef.current && !returnToPreSearch) {
+      const snap = preSearchStateRef.current;
+      skipCategoryResetRef.current = true;
+      setSelectedCategory(snap.category);
+      setFilter(snap.filter);
+      setCurrentIndex(snap.index);
+      setIsFlipped(false);
+      setSelectedQuizOption(null);
+      preSearchStateRef.current = null;
+    }
+  };
+
   // 点击搜索结果跳转
   const handleSelectSearchItem = (targetItem) => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    const snap = preSearchStateRef.current || {
+      index: currentIndex,
+      category: selectedCategory,
+      filter: filter,
+      activeMode: activeMode,
+      displayIndex: safeIndex + 1,
+      totalInCat: currentCategoryItems.length
+    };
+    setReturnToPreSearch(snap);
+    preSearchStateRef.current = null;
+
+    setHistory(prev => [...prev, currentIndex]);
+
+    skipCategoryResetRef.current = true;
     setSelectedCategory(targetItem.chapter || 'all');
     setFilter('all');
     setSearchQuery('');
     setIsSearchOpen(false);
 
     setTimeout(() => {
-      const catItems = items.filter(i => targetItem.chapter === 'all' || i.chapter === targetItem.chapter);
+      const catItems = items.filter(i => (!targetItem.chapter || targetItem.chapter === 'all') ? true : i.chapter === targetItem.chapter);
       const targetIndex = catItems.findIndex(i => i.id === targetItem.id);
       if (targetIndex !== -1) {
         setCurrentIndex(targetIndex);
       }
       setIsFlipped(false);
       setSelectedQuizOption(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 20);
+  };
+
+  const handleRestorePreSearch = () => {
+    if (returnToPreSearch) {
+      skipCategoryResetRef.current = true;
+      setSelectedCategory(returnToPreSearch.category);
+      setFilter(returnToPreSearch.filter);
+      setCurrentIndex(returnToPreSearch.index);
+      setIsFlipped(false);
+      setSelectedQuizOption(null);
+      setReturnToPreSearch(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // 点击统计项状态筛选
@@ -577,7 +645,13 @@ export default function App() {
           {/* 右上角：搜索按钮 */}
           <button 
             className={`header-icon-btn search-header-btn ${(isSearchOpen || searchQuery) ? 'active' : ''}`} 
-            onClick={() => setIsSearchOpen(prev => !prev)} 
+            onClick={() => {
+              if (isSearchOpen || searchQuery) {
+                handleCloseSearch();
+              } else {
+                handleOpenSearch();
+              }
+            }} 
             title="搜索常识考点"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
@@ -608,6 +682,16 @@ export default function App() {
               placeholder={`搜索考点、题目、解析 (${items.length} 题)...`}
               value={searchQuery}
               onChange={(e) => {
+                if (!preSearchStateRef.current && e.target.value) {
+                  preSearchStateRef.current = {
+                    index: currentIndex,
+                    category: selectedCategory,
+                    filter: filter,
+                    activeMode: activeMode,
+                    displayIndex: safeIndex + 1,
+                    totalInCat: currentCategoryItems.length
+                  };
+                }
                 setSearchQuery(e.target.value);
               }}
               onKeyDown={(e) => {
@@ -623,12 +707,12 @@ export default function App() {
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setSearchQuery('');
+                  handleCloseSearch();
                 }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setSearchQuery('');
+                  handleCloseSearch();
                 }}
                 title="清空搜索"
               >
@@ -715,7 +799,7 @@ export default function App() {
               <span className="search-count-text">
                 共匹配到 <strong>{searchMatchedItems.length}</strong> 个{activeMode === 'knowledge' ? '考点' : '题目'}
               </span>
-              <button className="search-clear-action-btn" onClick={() => setSearchQuery('')}>
+              <button className="search-clear-action-btn" onClick={handleCloseSearch}>
                 清空搜索
               </button>
             </div>
@@ -723,6 +807,9 @@ export default function App() {
             {searchMatchedItems.length === 0 ? (
               <div className="empty-state-card" style={{ background: 'white', borderRadius: '20px', padding: '2rem', textAlign: 'center' }}>
                 <p style={{ color: 'var(--text-secondary)' }}>没有找到匹配的{activeMode === 'knowledge' ? '考点' : '题目'}</p>
+                <button className="empty-state-btn" onClick={handleCloseSearch} style={{ marginTop: '0.8rem', padding: '0.4rem 1rem', borderRadius: '8px', border: '1px solid var(--accent-color)', background: 'white', color: 'var(--accent-color)', cursor: 'pointer', fontWeight: 600 }}>
+                  清空搜索
+                </button>
               </div>
             ) : (
               <div className="knowledge-cards-list">
@@ -776,6 +863,19 @@ export default function App() {
           </div>
         ) : (
           <>
+            {/* 从搜索结果临时跳转时的醒目返回胶囊 */}
+            {returnToPreSearch && (
+              <div className="search-return-banner">
+                <div className="banner-info">
+                  <span className="banner-badge">搜索结果</span>
+                  <span className="banner-tip">正在练习搜索出的{activeMode === 'knowledge' ? '考点' : '真题'}</span>
+                </div>
+                <button className="banner-return-btn" onClick={handleRestorePreSearch}>
+                  ↩️ 返回原刷题进度 (第 {returnToPreSearch.displayIndex} 题)
+                </button>
+              </div>
+            )}
+
             {activeMode === 'knowledge' ? (
               /* 考点模式：3D 翻转卡片 */
               <div

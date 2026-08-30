@@ -137,6 +137,10 @@ function App() {
   const actionButtonsRef = useRef(null);
   const [calculatedMarginTop, setCalculatedMarginTop] = useState(0);
 
+  // 搜索前进度现场快照与一键返回状态
+  const preSearchStateRef = useRef(null);
+  const [returnToPreSearch, setReturnToPreSearch] = useState(null);
+
   const searchMatchedIdioms = (searchQuery && searchQuery.trim() !== '') 
     ? idioms.filter(item => {
         const q = searchQuery.trim().toLowerCase();
@@ -149,7 +153,46 @@ function App() {
       })
     : [];
 
+  const handleOpenSearch = () => {
+    if (!preSearchStateRef.current) {
+      preSearchStateRef.current = {
+        index: currentIndex,
+        filter: filter,
+        quizMode: quizMode,
+        displayIndex: currentIndex + 1,
+        total: idioms.length
+      };
+    }
+    setIsSearchOpen(true);
+  };
+
+  const handleCloseSearch = () => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    // 若未通过搜索结果跳转，则自动恢复搜索前现场
+    if (preSearchStateRef.current && !returnToPreSearch) {
+      const snap = preSearchStateRef.current;
+      setFilter(snap.filter);
+      setCurrentIndex(snap.index);
+      setIsFlipped(false);
+      setSelectedOption(null);
+      preSearchStateRef.current = null;
+    }
+  };
+
   const handleSelectSearchItem = (targetItem) => {
+    const snap = preSearchStateRef.current || {
+      index: currentIndex,
+      filter: filter,
+      quizMode: quizMode,
+      displayIndex: currentIndex + 1,
+      total: idioms.length
+    };
+    setReturnToPreSearch(snap);
+    preSearchStateRef.current = null;
+
+    setHistory(prev => [...prev, currentIndex]);
+
     const targetIndex = idioms.findIndex(i => i.word === targetItem.word);
     if (targetIndex !== -1) {
       setFilter('all');
@@ -158,6 +201,18 @@ function App() {
       setCurrentIndex(targetIndex);
       setIsFlipped(false);
       setSelectedOption(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleRestorePreSearch = () => {
+    if (returnToPreSearch) {
+      setFilter(returnToPreSearch.filter);
+      setCurrentIndex(returnToPreSearch.index);
+      setIsFlipped(false);
+      setSelectedOption(null);
+      setReturnToPreSearch(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -523,7 +578,13 @@ function App() {
           {/* 右上角：搜索按钮 */}
           <button 
             className={`header-icon-btn search-header-btn ${(isSearchOpen || searchQuery) ? 'active' : ''}`} 
-            onClick={() => setIsSearchOpen(prev => !prev)} 
+            onClick={() => {
+              if (isSearchOpen || searchQuery) {
+                handleCloseSearch();
+              } else {
+                handleOpenSearch();
+              }
+            }} 
             title="搜索成语"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
@@ -554,6 +615,15 @@ function App() {
               placeholder={`搜索成语词目、释义 (${idioms.length} 题)...`}
               value={searchQuery}
               onChange={(e) => {
+                if (!preSearchStateRef.current && e.target.value) {
+                  preSearchStateRef.current = {
+                    index: currentIndex,
+                    filter: filter,
+                    quizMode: quizMode,
+                    displayIndex: currentIndex + 1,
+                    total: idioms.length
+                  };
+                }
                 setSearchQuery(e.target.value);
               }}
               onKeyDown={(e) => {
@@ -569,12 +639,12 @@ function App() {
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setSearchQuery('');
+                  handleCloseSearch();
                 }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setSearchQuery('');
+                  handleCloseSearch();
                 }}
                 title="清空搜索"
               >
@@ -634,7 +704,7 @@ function App() {
               <span className="search-count-text">
                 共匹配到 <strong>{searchMatchedIdioms.length}</strong> 个成语
               </span>
-              <button className="search-clear-action-btn" onClick={() => setSearchQuery('')}>
+              <button className="search-clear-action-btn" onClick={handleCloseSearch}>
                 清空搜索
               </button>
             </div>
@@ -643,7 +713,7 @@ function App() {
               <div className="empty-state-card">
                 <h3>未找到匹配成语</h3>
                 <p>请尝试缩短关键词或搜索其他成语</p>
-                <button className="empty-state-btn" onClick={() => setSearchQuery('')}>
+                <button className="empty-state-btn" onClick={handleCloseSearch}>
                   清空搜索
                 </button>
               </div>
@@ -685,6 +755,19 @@ function App() {
           </div>
         ) : (
           <>
+            {/* 从搜索结果临时跳转时的醒目返回胶囊 */}
+            {returnToPreSearch && (
+              <div className="search-return-banner">
+                <div className="banner-info">
+                  <span className="banner-badge">搜索结果</span>
+                  <span className="banner-tip">正在练习搜索选中的成语</span>
+                </div>
+                <button className="banner-return-btn" onClick={handleRestorePreSearch}>
+                  ↩️ 返回原刷题进度 (第 {returnToPreSearch.displayIndex} 题)
+                </button>
+              </div>
+            )}
+
             <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: `${calculatedMarginTop}px` }} onClick={() => setIsFlipped(!isFlipped)}>
           <div className={`card ${isFlipped ? 'flipped' : ''}`}>
             <div className="card-front">
