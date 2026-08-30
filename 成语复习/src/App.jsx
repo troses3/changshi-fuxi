@@ -137,9 +137,8 @@ function App() {
   const actionButtonsRef = useRef(null);
   const [calculatedMarginTop, setCalculatedMarginTop] = useState(0);
 
-  // 搜索前进度现场快照与一键返回状态
-  const preSearchStateRef = useRef(null);
-  const [returnToPreSearch, setReturnToPreSearch] = useState(null);
+  // 搜索查看独立状态：完全解耦，绝不污染正常刷题 cursor (currentIndex)
+  const [inspectingSearchItem, setInspectingSearchItem] = useState(null);
 
   const searchMatchedIdioms = (searchQuery && searchQuery.trim() !== '') 
     ? idioms.filter(item => {
@@ -154,66 +153,22 @@ function App() {
     : [];
 
   const handleOpenSearch = () => {
-    if (!preSearchStateRef.current) {
-      preSearchStateRef.current = {
-        index: currentIndex,
-        filter: filter,
-        quizMode: quizMode,
-        displayIndex: currentIndex + 1,
-        total: idioms.length
-      };
-    }
     setIsSearchOpen(true);
   };
 
   const handleCloseSearch = () => {
     setIsSearchOpen(false);
     setSearchQuery('');
-    if (preSearchStateRef.current) {
-      const snap = preSearchStateRef.current;
-      setFilter(snap.filter);
-      setCurrentIndex(snap.index);
-      setIsFlipped(false);
-      setSelectedOption(null);
-      preSearchStateRef.current = null;
-    }
-    setReturnToPreSearch(null);
+    setInspectingSearchItem(null);
   };
 
   const handleSelectSearchItem = (targetItem) => {
-    const snap = preSearchStateRef.current || {
-      index: currentIndex,
-      filter: filter,
-      quizMode: quizMode,
-      displayIndex: currentIndex + 1,
-      total: idioms.length
-    };
-    setReturnToPreSearch(snap);
-    preSearchStateRef.current = null;
-
-    setHistory(prev => [...prev, currentIndex]);
-
-    const targetIndex = idioms.findIndex(i => i.word === targetItem.word);
-    if (targetIndex !== -1) {
-      setFilter('all');
-      setSearchQuery('');
-      setIsSearchOpen(false);
-      setCurrentIndex(targetIndex);
-      setIsFlipped(false);
-      setSelectedOption(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  const handleRestorePreSearch = () => {
-    if (returnToPreSearch) {
-      setFilter(returnToPreSearch.filter);
-      setCurrentIndex(returnToPreSearch.index);
-      setIsFlipped(false);
-      setSelectedOption(null);
-      setReturnToPreSearch(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    setInspectingSearchItem(targetItem);
+    setSearchQuery('');
+    setIsSearchOpen(false);
+    setIsFlipped(false);
+    setSelectedOption(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -255,7 +210,7 @@ function App() {
     }
   }, [idioms]);
 
-  const currentIdiom = idioms[currentIndex];
+  const currentIdiom = inspectingSearchItem || idioms[currentIndex];
 
   const [shuffledOptions, setShuffledOptions] = useState([]);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -431,23 +386,25 @@ function App() {
   };
 
   const handleNext = (status) => {
+    if (inspectingSearchItem) {
+      const updatedIdioms = [...idioms];
+      const targetIdx = updatedIdioms.findIndex(i => i.word === inspectingSearchItem.word);
+      if (targetIdx !== -1) {
+        updatedIdioms[targetIdx].status = status;
+        setIdioms(updatedIdioms);
+      }
+      setIsFlipped(false);
+      setSelectedOption(null);
+      setInspectingSearchItem(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     const updatedIdioms = [...idioms];
     updatedIdioms[currentIndex].status = status;
     setIdioms(updatedIdioms);
     setIsFlipped(false);
     
-    // 如果当前正在处理搜索结果题目，标记状态后立即自动返回搜索前的原刷题进度！
-    if (returnToPreSearch) {
-      setTimeout(() => {
-        setFilter(returnToPreSearch.filter);
-        setCurrentIndex(returnToPreSearch.index);
-        setSelectedOption(null);
-        setReturnToPreSearch(null);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 50);
-      return;
-    }
-
     // Save to history before navigating
     setHistory(prev => [...prev, currentIndex]);
 
@@ -768,14 +725,14 @@ function App() {
         ) : (
           <>
             {/* 从搜索结果临时跳转时的醒目返回胶囊 */}
-            {returnToPreSearch && (
+            {inspectingSearchItem && (
               <div className="search-return-banner">
                 <div className="banner-info">
                   <span className="banner-badge">搜索结果</span>
                   <span className="banner-tip">正在练习搜索选中的成语</span>
                 </div>
-                <button className="banner-return-btn" onClick={handleRestorePreSearch}>
-                  ↩️ 返回原刷题进度 (第 {returnToPreSearch.displayIndex} 题)
+                <button className="banner-return-btn" onClick={() => setInspectingSearchItem(null)}>
+                  ↩️ 返回原刷题进度 (第 {currentIndex + 1} 题)
                 </button>
               </div>
             )}
