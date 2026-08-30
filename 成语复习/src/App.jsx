@@ -169,8 +169,7 @@ function App() {
   const handleCloseSearch = () => {
     setIsSearchOpen(false);
     setSearchQuery('');
-    // 若未通过搜索结果跳转，则自动恢复搜索前现场
-    if (preSearchStateRef.current && !returnToPreSearch) {
+    if (preSearchStateRef.current) {
       const snap = preSearchStateRef.current;
       setFilter(snap.filter);
       setCurrentIndex(snap.index);
@@ -178,6 +177,7 @@ function App() {
       setSelectedOption(null);
       preSearchStateRef.current = null;
     }
+    setReturnToPreSearch(null);
   };
 
   const handleSelectSearchItem = (targetItem) => {
@@ -436,6 +436,18 @@ function App() {
     setIdioms(updatedIdioms);
     setIsFlipped(false);
     
+    // 如果当前正在处理搜索结果题目，标记状态后立即自动返回搜索前的原刷题进度！
+    if (returnToPreSearch) {
+      setTimeout(() => {
+        setFilter(returnToPreSearch.filter);
+        setCurrentIndex(returnToPreSearch.index);
+        setSelectedOption(null);
+        setReturnToPreSearch(null);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 50);
+      return;
+    }
+
     // Save to history before navigating
     setHistory(prev => [...prev, currentIndex]);
 

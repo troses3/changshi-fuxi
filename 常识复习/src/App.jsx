@@ -380,8 +380,7 @@ export default function App() {
   const handleCloseSearch = () => {
     setIsSearchOpen(false);
     setSearchQuery('');
-    // 若未通过搜索结果跳转，则自动恢复搜索前现场
-    if (preSearchStateRef.current && !returnToPreSearch) {
+    if (preSearchStateRef.current) {
       const snap = preSearchStateRef.current;
       skipCategoryResetRef.current = true;
       setSelectedCategory(snap.category);
@@ -391,6 +390,7 @@ export default function App() {
       setSelectedQuizOption(null);
       preSearchStateRef.current = null;
     }
+    setReturnToPreSearch(null);
   };
 
   // 点击搜索结果跳转
@@ -486,6 +486,21 @@ export default function App() {
     setItems(updatedItems);
     setIsFlipped(false);
     setSelectedQuizOption(null);
+
+    // 如果当前正在处理搜索结果题目，标记状态后立即自动返回搜索前的原刷题进度！
+    if (returnToPreSearch) {
+      setTimeout(() => {
+        skipCategoryResetRef.current = true;
+        setSelectedCategory(returnToPreSearch.category);
+        setFilter(returnToPreSearch.filter);
+        setCurrentIndex(returnToPreSearch.index);
+        setIsFlipped(false);
+        setSelectedQuizOption(null);
+        setReturnToPreSearch(null);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 50);
+      return;
+    }
 
     // 记录上一张的历史
     setHistory(prev => [...prev, safeIndex]);
