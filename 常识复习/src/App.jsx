@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
+import { triggerHaptic } from './utils/haptics';
 
 import knowledgeData from './data/knowledge_db.json';
 import questionData from './data/question_db.json';
@@ -387,10 +388,12 @@ export default function App() {
   });
 
   const handleOpenSearch = () => {
+    triggerHaptic('menuToggle');
     setIsSearchOpen(true);
   };
 
   const handleCloseSearch = () => {
+    triggerHaptic('clear');
     setIsSearchOpen(false);
     setSearchQuery('');
     setInspectingSearchItem(null);
@@ -398,6 +401,7 @@ export default function App() {
 
   // 点击搜索结果跳转独立预览
   const handleSelectSearchItem = (targetItem) => {
+    triggerHaptic('optionSelect');
     setInspectingSearchItem(targetItem);
     setSearchQuery('');
     setIsSearchOpen(false);
@@ -408,6 +412,7 @@ export default function App() {
 
   // 点击统计项状态筛选
   const handleFilterClick = (targetFilter) => {
+    triggerHaptic('optionSelect');
     if (filter === targetFilter) {
       setFilter('all');
       return;
@@ -443,6 +448,14 @@ export default function App() {
   // 下一张与状态标记切换算法
   const handleNext = (status) => {
     if (!currentItem) return;
+
+    if (status === 'known') {
+      triggerHaptic('success');
+    } else if (status === 'unknown') {
+      triggerHaptic('error');
+    } else {
+      triggerHaptic('tap');
+    }
 
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -552,6 +565,7 @@ export default function App() {
   // 上一张
   const handlePrev = (e) => {
     e.stopPropagation();
+    triggerHaptic('tap');
     if (history.length > 0) {
       window.scrollTo({ top: 0, behavior: 'instant' });
       const prevIndex = history[history.length - 1];
@@ -586,6 +600,7 @@ export default function App() {
             className="header-icon-btn reset-header-btn" 
             title="重置当前模式学习进度"
             onClick={() => {
+              triggerHaptic('dangerReset');
               const modeName = activeMode === 'knowledge' ? '考点模式' : '真题模式';
               if(window.confirm(`确定要重置【${modeName}】的所有学习进度吗？（不可恢复）`)) {
                 localStorage.removeItem(`${STORAGE_KEY}_${activeMode}`);
@@ -602,7 +617,10 @@ export default function App() {
           {/* 中间：可交互的沉浸指示胶囊（点击展开/收起题库与筛选控制面板） */}
           <button 
             className={`header-meta-pill ${isPanelOpen ? 'active' : ''}`}
-            onClick={() => setIsPanelOpen(prev => !prev)}
+            onClick={() => {
+              triggerHaptic('menuToggle');
+              setIsPanelOpen(prev => !prev);
+            }}
             title={isPanelOpen ? "收起筛选面板" : "展开题库与章节面板"}
           >
             <span className="pill-db-name">{activeMode === 'knowledge' ? '📖 考点模式' : '✍️ 真题演练'}</span>
@@ -730,7 +748,10 @@ export default function App() {
 
               <button 
                 className={`stat-item ${filter === 'all' ? 'active-all' : ''}`}
-                onClick={() => setFilter('all')}
+                onClick={() => {
+                  triggerHaptic('optionSelect');
+                  setFilter('all');
+                }}
                 title="查看全部"
               >
                 总计: <span className="stat-count">{total}</span>
@@ -751,7 +772,10 @@ export default function App() {
                   <button
                     key={cat.key}
                     className={`cat-chip ${selectedCategory === cat.key ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(cat.key)}
+                    onClick={() => {
+                      triggerHaptic('optionSelect');
+                      setSelectedCategory(cat.key);
+                    }}
                   >
                     {cat.label}
                   </button>
@@ -855,7 +879,10 @@ export default function App() {
                   height: isFlipped ? cardHeight : '340px',
                   marginTop: `${calculatedMarginTop}px`
                 }}
-                onClick={() => setIsFlipped(!isFlipped)}
+                onClick={() => {
+                  triggerHaptic('cardFlip');
+                  setIsFlipped(!isFlipped);
+                }}
               >
                 <div className={`card ${isFlipped ? 'flipped' : ''}`}>
                   {/* 卡片正面 */}
@@ -967,6 +994,11 @@ export default function App() {
                         className={btnClass}
                         onClick={() => {
                           if (selectedQuizOption === null) {
+                            if (opt.key === currentItem.answer) {
+                              triggerHaptic('success');
+                            } else {
+                              triggerHaptic('error');
+                            }
                             setSelectedQuizOption(opt.key);
                           }
                         }}
@@ -1037,6 +1069,7 @@ export default function App() {
         <button
           className={`mode-btn ${activeMode === 'knowledge' ? 'active' : ''}`}
           onClick={() => {
+            triggerHaptic('optionSelect');
             setActiveMode('knowledge');
             setIsFlipped(false);
             setSelectedQuizOption(null);
@@ -1047,6 +1080,7 @@ export default function App() {
         <button
           className={`mode-btn ${activeMode === 'quiz' ? 'active' : ''}`}
           onClick={() => {
+            triggerHaptic('optionSelect');
             setActiveMode('quiz');
             setIsFlipped(false);
             setSelectedQuizOption(null);
@@ -1057,13 +1091,17 @@ export default function App() {
         <span className="mode-divider"></span>
         <button
           className={`mode-btn random-btn ${!isRandom ? 'active' : ''}`}
-          onClick={() => setIsRandom(false)}
+          onClick={() => {
+            triggerHaptic('optionSelect');
+            setIsRandom(false);
+          }}
         >
           顺序
         </button>
         <button
           className={`mode-btn random-btn ${isRandom ? 'active' : ''}`}
           onClick={() => {
+            triggerHaptic('optionSelect');
             setIsRandom(true);
             if (currentCategoryItems.length > 0) {
               const randIdx = Math.floor(Math.random() * currentCategoryItems.length);
