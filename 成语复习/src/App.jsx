@@ -115,7 +115,14 @@ function App() {
     }));
   });
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const saved = localStorage.getItem('idiom-tracker-current-index');
+    if (saved !== null) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed >= 0) return parsed;
+    }
+    return 0;
+  });
   const [isFlipped, setIsFlipped] = useState(false);
   const [stats, setStats] = useState({ known: 0, unsure: 0, unknown: 0 });
   const [filter, setFilter] = useState('all'); // 'all', 'known', 'unsure', 'unknown'
@@ -172,6 +179,10 @@ function App() {
   };
 
   useEffect(() => {
+    localStorage.setItem('idiom-tracker-current-index', currentIndex);
+  }, [currentIndex]);
+
+  useEffect(() => {
     localStorage.setItem('idiom-tracker-random', isRandom);
   }, [isRandom]);
 
@@ -180,9 +191,10 @@ function App() {
   }, [quizMode]);
 
   useEffect(() => {
-    // Pick a random starting index if random mode is active on load
+    // 若首次进入且开启了随机模式，且没有历史进度记录，则随机选一个起点
+    const hasSavedIndex = localStorage.getItem('idiom-tracker-current-index') !== null;
     const isRandomStored = localStorage.getItem('idiom-tracker-random') === 'true';
-    if (isRandomStored && idioms.length > 0) {
+    if (!hasSavedIndex && isRandomStored && idioms.length > 0) {
       const candidateIndices = [];
       idioms.forEach((idiom, index) => {
         if (idiom.status !== 'known') {

@@ -124,7 +124,15 @@ export default function App() {
     }));
   });
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const initMode = localStorage.getItem('cs-fuxi-mode') || 'knowledge';
+    const saved = localStorage.getItem(`cs-fuxi-current-index_${initMode}`);
+    if (saved !== null) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed >= 0) return parsed;
+    }
+    return 0;
+  });
   const [isFlipped, setIsFlipped] = useState(false);
   const [stats, setStats] = useState({ known: 0, unsure: 0, unknown: 0 });
   const [filter, setFilter] = useState('all'); // 'all', 'known', 'unsure', 'unknown'
@@ -136,10 +144,14 @@ export default function App() {
   // 真题选择的选项
   const [selectedQuizOption, setSelectedQuizOption] = useState(null);
 
-  // 保存模式与随机设置
+  // 保存模式与随机设置及当前题号
   useEffect(() => {
     localStorage.setItem('cs-fuxi-mode', activeMode);
   }, [activeMode]);
+
+  useEffect(() => {
+    localStorage.setItem(`cs-fuxi-current-index_${activeMode}`, currentIndex);
+  }, [currentIndex, activeMode]);
 
   useEffect(() => {
     localStorage.setItem('cs-fuxi-random', isRandom);
