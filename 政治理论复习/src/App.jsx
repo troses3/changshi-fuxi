@@ -428,20 +428,8 @@ function App() {
     }
   }, [items, dataSource, activeMode]);
 
-  // Filtered by chapter & search query
+  // Filtered by chapter only (搜索完全解耦，不污染分类刷题列表)
   const currentCategoryItems = items.filter(item => {
-    // 🔍 实时多维度匹配当前题库考点与原句（不匹配章节名称，防止泛滥匹配）
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      const w = (item.word || '').toLowerCase();
-      const m = (item.meaning || '').toLowerCase();
-      const h = (item.hint || '').toLowerCase();
-      const t = (item.title || '').toLowerCase();
-      const s = (item.subtitle || '').toLowerCase();
-      const matchesSearch = w.includes(q) || m.includes(q) || h.includes(q) || t.includes(q) || s.includes(q);
-      if (!matchesSearch) return false;
-    }
-
     if (selectedCategory === 'all') return true;
     return item.chapter === selectedCategory;
   });
