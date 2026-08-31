@@ -207,19 +207,31 @@ export default function App() {
 
     const targetPool = catItems.length > 0 ? catItems : loadedItems;
 
-    if (isRandom && targetPool.length > 0) {
-      const candidateIndices = [];
-      targetPool.forEach((item, index) => {
-        if (item.status !== 'known') {
-          candidateIndices.push(index);
-        }
-      });
-      const randIndex = candidateIndices.length > 0 
-        ? candidateIndices[Math.floor(Math.random() * candidateIndices.length)]
-        : Math.floor(Math.random() * targetPool.length);
-      setCurrentIndex(randIndex);
+    const savedIndexKey = `cs-fuxi-current-index_${activeMode}`;
+    const savedIndex = localStorage.getItem(savedIndexKey);
+    
+    if (savedIndex !== null) {
+      const parsed = parseInt(savedIndex, 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed < targetPool.length) {
+        setCurrentIndex(parsed);
+      } else {
+        setCurrentIndex(0);
+      }
     } else {
-      setCurrentIndex(0);
+      if (isRandom && targetPool.length > 0) {
+        const candidateIndices = [];
+        targetPool.forEach((item, index) => {
+          if (item.status !== 'known') {
+            candidateIndices.push(index);
+          }
+        });
+        const randIndex = candidateIndices.length > 0 
+          ? candidateIndices[Math.floor(Math.random() * candidateIndices.length)]
+          : Math.floor(Math.random() * targetPool.length);
+        setCurrentIndex(randIndex);
+      } else {
+        setCurrentIndex(0);
+      }
     }
 
     setIsFlipped(false);
