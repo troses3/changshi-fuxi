@@ -595,18 +595,7 @@ function App() {
               className="search-box-input"
               placeholder={`搜索成语词目、释义 (${idioms.length} 题)...`}
               value={searchQuery}
-              onChange={(e) => {
-                if (!preSearchStateRef.current && e.target.value) {
-                  preSearchStateRef.current = {
-                    index: currentIndex,
-                    filter: filter,
-                    quizMode: quizMode,
-                    displayIndex: currentIndex + 1,
-                    total: idioms.length
-                  };
-                }
-                setSearchQuery(e.target.value);
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.target.blur();
