@@ -79,6 +79,7 @@ function formatContent(text) {
 
 export default function App() {
   const headerRef = useRef(null);
+  const skipCategoryResetRef = useRef(true);
   const modeBarRef = useRef(null);
   const actionButtonsRef = useRef(null);
   const cardBackInnerRef = useRef(null);
