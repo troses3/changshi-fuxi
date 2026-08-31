@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🥞 3D 摊饼法玩转容斥原理 —— 小P极速可视化</title>
+    <!-- Three.js & OrbitControls via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Tween.js for silky smooth 3D animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <style>
+        :root {
+            --bg-color: #121418;
+            --card-bg: rgba(26, 32, 44, 0.85);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --primary: #f6ad55;
+            --primary-glow: rgba(246, 173, 85, 0.4);
+            --accent: #4fd1c5;
+            --accent-purple: #b794f4;
+            --text-main: #f7fafc;
+            --text-sub: #a0aec0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 3D WebGL Canvas */
+        #webgl-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 浮动 UI 顶层容器 */
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px 32px;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        /* 顶部导航与标题栏 */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            padding: 12px 24px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+        }
+
+        .brand-sub {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        /* 模式切换 Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .tab-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-sub);
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #1a202c;
+            box-shadow: 0 2px 10px var(--primary-glow);
+        }
+
+        /* 3D 视角切换按钮组 */
+        .view-controls {
+            position: absolute;
+            top: 90px;
+            right: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            padding: 8px;
+            border-radius: 14px;
+            border: 1px solid var(--card-border);
+        }
+
+        .view-btn {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid transparent;
+            color: var(--text-sub);
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .view-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        /* 底部操作主控台 (Glassmorphic HUD) */
+        .bottom-hud {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            align-items: end;
+            margin-top: auto;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 20px 24px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
+
+        .step-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(246, 173, 85, 0.15);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(246, 173, 85, 0.3);
+        }
+
+        .step-heading {
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .step-detail {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-sub);
+            min-height: 48px;
+        }
+
+        /* 实时 3D 厚度指示器 */
+        .legend-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+
+        /* 右侧公式与操作区 */
+        .action-card {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .math-display {
+            background: rgba(0, 0, 0, 0.4);
+            border-left: 4px solid var(--primary);
+            padding: 12px 14px;
+            border-radius: 0 10px 10px 0;
+            font-family: "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 13px;
+            font-weight: bold;
+            color: #feebc8;
+            line-height: 1.4;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .hud-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .hud-btn-primary {
+            background: linear-gradient(135deg, #f6ad55 0%, #dd6b20 100%);
+            color: #1a202c;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        .hud-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--primary-glow);
+        }
+
+        .hud-btn-secondary {
+            background: rgba(255,255,255,0.08);
+            color: var(--text-main);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .hud-btn-secondary:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* 3D 悬浮操作提示 */
+        .hint-tooltip {
+            position: absolute;
+            top: 90px;
+            left: 32px;
+            background: rgba(26, 32, 44, 0.7);
+            backdrop-filter: blur(8px);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-sub);
+            border: 1px solid var(--card-border);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D 渲染画布 -->
+    <div id="webgl-canvas"></div>
+
+    <!-- 悬浮 UI 交互层 -->
+    <div class="ui-overlay">
+        <!-- 顶部导航 -->
+        <header class="interactive">
+            <div class="brand">
+                <span style="font-size: 24px;">🥞</span>
+                <div>
+                    <div class="brand-title">3D 摊饼法玩转容斥原理</div>
+                    <div class="brand-sub">真正立体的“厚度堆叠与铲削找平”可视化</div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchMode('non-standard')">
+                    🍳 模式一：非标三集合（3D铲削找平）
+                </button>
+                <button class="tab-btn" onclick="switchMode('standard')">
+                    ⚖️ 模式二：标准三集合（3D加减掏空）
+                </button>
+                <button class="tab-btn" onclick="switchMode('extremum')">
+                    🧱 模式三：铺砖摊平极值（3D容斥最值）
+                </button>
+            </div>
+        </header>
+
+        <!-- 3D 交互提示 -->
+        <div class="hint-tooltip">
+            🖱️ 鼠标左键拖拽旋转 3D 视角 ｜ 滚轮缩放 ｜ 右键平移
+        </div>
+
+        <!-- 视角切换器 -->
+        <div class="view-controls interactive">
+            <button class="view-btn" onclick="setCameraView('iso')">📐 3D 透视视角</button>
+            <button class="view-btn" onclick="setCameraView('top')">🎯 俯视平面图 (2D)</button>
+            <button class="view-btn" onclick="setCameraView('side')">📏 侧面观厚度 (层数)</button>
+        </div>
+
+        <!-- 底部主控台 -->
+        <div class="bottom-hud interactive">
+            <!-- 左侧：步骤说明与图例 -->
+            <div class="glass-card">
+                <div class="step-badge" id="step-badge">
+                    <span>⚡</span> <span id="badge-text">步骤 1 / 4</span>
+                </div>
+                <div class="step-heading" id="step-heading">倒上面糊 A、B、C，观察三维厚度堆叠</div>
+                <div class="step-detail" id="step-detail">
+                    三团面糊倒在铁锅中。单项区域厚度为 1，两两相交的花瓣叠到了 2 层厚，最中心的红心区域堆叠了 3 层厚！
+                </div>
+
+                <div class="legend-row">
+                    <div class="legend-item"><div class="legend-dot" style="background:#4a5568;"></div> 锅底(0层/都不)</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#ecc94b;"></div> 1层厚(只1项)</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#ed8936;"></div> 2层厚(只2项)</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#e53e3e;"></div> 3层厚(都3项)</div>
+                </div>
+            </div>
+
+            <!-- 右侧：公式显示与下一步 -->
+            <div class="glass-card action-card">
+                <div style="font-size: 12px; color: var(--text-sub);">实时三维账单 / 找平公式：</div>
+                <div class="math-display" id="math-display">
+                    总数 = A + B + C (当前凸凹不平)
+                </div>
+
+                <div class="btn-row">
+                    <button class="hud-btn hud-btn-secondary" onclick="resetAnimation()">⏮ 重置</button>
+                    <button class="hud-btn hud-btn-primary" id="next-action-btn" onclick="nextAnimationStep()">
+                        👉 下一步（铲削）
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // Three.js 3D 场景核心初始化
+        // ==========================================
+        let scene, camera, renderer, controls;
+        let currentMode = 'non-standard';
+        let currentStep = 0;
+
+        // 3D 对象组
+        let panGroup, pancakeGroup, toolGroup;
+        let pillars = {}; // 存储各个区域的 3D 柱体网格
+
+        const COLORS = {
+            pan: 0x242b35,
+            panRim: 0xd69e2e,
+            baseEmpty: 0x3a4556,
+            setA: 0xf6ad55, // 橙黄面糊
+            setB: 0x4fd1c5, // 蓝绿面糊
+            setC: 0xb794f4, // 紫色面糊
+            layer1: 0xf6e05e, // 1层金色
+            layer2: 0xed8936, // 2层焦橙
+            layer3: 0xe53e3e, // 3层红色塔尖
+            spatula: 0xe2e8f0
+        };
+
+        function initThree() {
+            const container = document.getElementById('webgl-canvas');
+            
+            // 场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x121418);
+            scene.fog = new THREE.FogExp2(0x121418, 0.018);
+
+            // 相机
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 32, 40);
+
+            // 渲染器 (抗锯齿 + 阴影)
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // 轨道控制器
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.02; // 防止穿透地面
+            controls.minDistance = 15;
+            controls.maxDistance = 80;
+            controls.target.set(0, 0, 0);
+
+            // 灯光系统 (影视级三点光源)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+            const mainLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+            mainLight.position.set(20, 40, 25);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 2048;
+            mainLight.shadow.mapSize.height = 2048;
+            mainLight.shadow.bias = -0.0001;
+            scene.add(mainLight);
+
+            const fillLight = new THREE.PointLight(0x4fd1c5, 0.8, 60);
+            fillLight.position.set(-25, 20, -20);
+            scene.add(fillLight);
+
+            const warmBackLight = new THREE.PointLight(0xf6ad55, 0.9, 60);
+            warmBackLight.position.set(20, 15, -25);
+            scene.add(warmBackLight);
+
+            // 创建场景根节点
+            panGroup = new THREE.Group();
+            pancakeGroup = new THREE.Group();
+            toolGroup = new THREE.Group();
+            scene.add(panGroup);
+            scene.add(pancakeGroup);
+            scene.add(toolGroup);
+
+            // 构建 3D 铁锅底座
+            createCastIronPan();
+
+            // 监听窗口缩放
+            window.addEventListener('resize', onWindowResize);
+
+            // 构建当前模式下的 3D 网格
+            buildSceneObjects();
+
+            // 启动渲染循环
+            animate();
+        }
+
+        // 创建精致带倒角的 3D 铸铁煎锅
+        function createCastIronPan() {
+            // 锅底
+            const panGeo = new THREE.CylinderGeometry(18, 18.5, 1.2, 64);
+            const panMat = new THREE.MeshStandardMaterial({
+                color: COLORS.pan,
+                roughness: 0.5,
+                metalness: 0.6
+            });
+            const pan = new THREE.Mesh(panGeo, panMat);
+            pan.position.y = -0.6;
+            pan.receiveShadow = true;
+            panGroup.add(pan);
+
+            // 锅边金色金属边框圈
+            const rimGeo = new THREE.TorusGeometry(18.2, 0.35, 16, 100);
+            const rimMat = new THREE.MeshStandardMaterial({
+                color: COLORS.panRim,
+                roughness: 0.2,
+                metalness: 0.85
+            });
+            const rim = new THREE.Mesh(rimGeo, rimMat);
+            rim.rotation.x = Math.PI / 2;
+            rim.position.y = 0.05;
+            panGroup.add(rim);
+
+            // 铸铁手柄
+            const handleGeo = new THREE.BoxGeometry(4, 0.8, 10);
+            const handle = new THREE.Mesh(handleGeo, panMat);
+            handle.position.set(0, -0.4, 22);
+            panGroup.add(handle);
+
+            // 锅底刻度线圆环 (象征总人数大盘)
+            const ringGeo = new THREE.RingGeometry(17.2, 17.5, 64);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x4a5568, side: THREE.DoubleSide });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.02;
+            panGroup.add(ring);
+        }
+
+        // ==========================================
+        // 3D 柱体网格生成系统 (Venn 区域 3D 化)
+        // ==========================================
+        function clearGroup(group) {
+            while (group.children.length > 0) {
+                const obj = group.children[0];
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) obj.material.dispose();
+                group.remove(obj);
+            }
+        }
+
+        function buildSceneObjects() {
+            clearGroup(pancakeGroup);
+            clearGroup(toolGroup);
+            pillars = {};
+
+            if (currentMode === 'non-standard' || currentMode === 'standard') {
+                buildVenn3DPillars();
+            } else if (currentMode === 'extremum') {
+                buildExtremum3DBlocks();
+            }
+        }
+
+        // 构造 3D 三集合柱体模型
+        function buildVenn3DPillars() {
+            // 三个集合圆心位置
+            const R = 8.2;
+            const cA = { x: -4.5, z: -2.5 };
+            const cB = { x: 4.5, z: -2.5 };
+            const cC = { x: 0, z: 5 };
+
+            // 辅助函数：创建 3D 柱体
+            function createPillar(name, x, z, radius, height, colorHex, opacity = 0.95) {
+                const geo = new THREE.CylinderGeometry(radius, radius, height, 32);
+                geo.translate(0, height / 2, 0); // 让锚点在底部
+                const mat = new THREE.MeshStandardMaterial({
+                    color: colorHex,
+                    roughness: 0.3,
+                    metalness: 0.1,
+                    transparent: true,
+                    opacity: opacity
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(x, 0.05, z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                pancakeGroup.add(mesh);
+                pillars[name] = mesh;
+                return mesh;
+            }
+
+            // 1. 单项独占区 (3 个只1项柱体 - 初始高度 1)
+            createPillar('onlyA', -7.5, -4.5, 4.2, 2.5, COLORS.setA);
+            createPillar('onlyB', 7.5, -4.5, 4.2, 2.5, COLORS.setB);
+            createPillar('onlyC', 0, 9.5, 4.2, 2.5, COLORS.setC);
+
+            // 2. 两两相交花瓣区 (3 个只2项柱体 - 初始高度 2)
+            createPillar('interAB', 0, -3.8, 3.2, 5.0, COLORS.layer2);
+            createPillar('interAC', -3.8, 2.5, 3.2, 5.0, COLORS.layer2);
+            createPillar('interBC', 3.8, 2.5, 3.2, 5.0, COLORS.layer2);
+
+            // 3. 三项相交中心红心区 (1 个都3项柱体 - 初始高度 3)
+            createPillar('centerABC', 0, 1.2, 2.6, 7.5, COLORS.layer3);
+
+            // 4. 锅底露白区域 (补齐层 - 初始高度 0.01)
+            const emptyGeo = new THREE.RingGeometry(0.1, 17.5, 64);
+            const emptyMat = new THREE.MeshStandardMaterial({
+                color: COLORS.baseEmpty,
+                roughness: 0.8,
+                transparent: true,
+                opacity: 0.3
+            });
+            const emptyMesh = new THREE.Mesh(emptyGeo, emptyMat);
+            emptyMesh.rotation.x = -Math.PI / 2;
+            emptyMesh.position.y = 0.03;
+            pancakeGroup.add(emptyMesh);
+            pillars['noneBase'] = emptyMesh;
+        }
+
+        // 构造 3D 铺砖极值模型
+        function buildExtremum3DBlocks() {
+            // 底座凹槽 100 人 (用 10x10 的 3D 方块矩阵展示)
+            const rows = 10, cols = 10;
+            const blockSize = 2.2, gap = 0.3;
+            const offsetX = -(cols * (blockSize + gap)) / 2 + blockSize / 2;
+            const offsetZ = -(rows * (blockSize + gap)) / 2 + blockSize / 2;
+
+            pillars['blocks'] = [];
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = offsetX + c * (blockSize + gap);
+                    const z = offsetZ + r * (blockSize + gap);
+
+                    // 底座
+                    const baseGeo = new THREE.BoxGeometry(blockSize, 0.4, blockSize);
+                    baseGeo.translate(0, 0.2, 0);
+                    const baseMat = new THREE.MeshStandardMaterial({ color: 0x3a4556, roughness: 0.7 });
+                    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+                    baseMesh.position.set(x, 0.05, z);
+                    pancakeGroup.add(baseMesh);
+
+                    // 可生长的砖块柱体
+                    const brickGeo = new THREE.BoxGeometry(blockSize * 0.95, 1, blockSize * 0.95);
+                    brickGeo.translate(0, 0.5, 0);
+                    const brickMat = new THREE.MeshStandardMaterial({
+                        color: COLORS.layer1,
+                        roughness: 0.3,
+                        metalness: 0.1
+                    });
+                    const brickMesh = new THREE.Mesh(brickGeo, brickMat);
+                    brickMesh.position.set(x, 0.45, z);
+                    brickMesh.scale.set(1, 0.01, 1); // 初始高度为 0
+                    brickMesh.castShadow = true;
+                    pancakeGroup.add(brickMesh);
+
+                    pillars['blocks'].push(brickMesh);
+                }
+            }
+        }
+
+        // ==========================================
+        // 模式切换与平滑 3D 动画状态机
+        // ==========================================
+        function switchMode(mode) {
+            currentMode = mode;
+            currentStep = 0;
+
+            document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active',
+                    (mode === 'non-standard' && idx === 0) ||
+                    (mode === 'standard' && idx === 1) ||
+                    (mode === 'extremum' && idx === 2)
+                );
+            });
+
+            buildSceneObjects();
+            updateUI();
+        }
+
+        function resetAnimation() {
+            currentStep = 0;
+            buildSceneObjects();
+            updateUI();
+        }
+
+        function nextAnimationStep() {
+            if (currentMode === 'non-standard') {
+                currentStep = (currentStep + 1) % 4;
+                animateNonStandardStep();
+            } else if (currentMode === 'standard') {
+                currentStep = (currentStep + 1) % 3;
+                animateStandardStep();
+            } else if (currentMode === 'extremum') {
+                currentStep = (currentStep + 1) % 3;
+                animateExtremumStep();
+            }
+            updateUI();
+        }
+
+        // 动画执行：模式一（非标准 3D 铲削找平）
+        function animateNonStandardStep() {
+            const h1 = 2.5; // 标准 1 层高度
+            const h2 = 5.0; // 2 层高度
+            const h3 = 7.5; // 3 层高度
+
+            if (currentStep === 0) {
+                // 重置状态
+                new TWEEN.Tween(pillars.interAB.scale).to({ y: 1 }, 600).start();
+                new TWEEN.Tween(pillars.interAC.scale).to({ y: 1 }, 600).start();
+                new TWEEN.Tween(pillars.interBC.scale).to({ y: 1 }, 600).start();
+                new TWEEN.Tween(pillars.centerABC.scale).to({ y: 1 }, 600).start();
+                pillars.noneBase.material.opacity = 0.3;
+                pillars.noneBase.material.color.setHex(COLORS.baseEmpty);
+            } 
+            else if (currentStep === 1) {
+                // 步骤 1：给锅底补齐 1 层面糊 (+都不)
+                new TWEEN.Tween(pillars.noneBase.material)
+                    .to({ opacity: 0.95 }, 800)
+                    .onStart(() => pillars.noneBase.material.color.setHex(0xfefcbf))
+                    .start();
+            } 
+            else if (currentStep === 2) {
+                // 步骤 2：铲平 2 层厚的花瓣 (-只2)
+                // 缩减高度从 2 层 (5.0) 降到 1 层 (2.5)，即 scale.y 从 1 变到 0.5
+                new TWEEN.Tween(pillars.interAB.scale).to({ y: 0.5 }, 800).easing(TWEEN.Easing.Quadratic.Out).start();
+                new TWEEN.Tween(pillars.interAC.scale).to({ y: 0.5 }, 800).easing(TWEEN.Easing.Quadratic.Out).start();
+                new TWEEN.Tween(pillars.interBC.scale).to({ y: 0.5 }, 800).easing(TWEEN.Easing.Quadratic.Out).start();
+
+                // 改变材质为统一找平金色
+                setTimeout(() => {
+                    pillars.interAB.material.color.setHex(COLORS.layer1);
+                    pillars.interAC.material.color.setHex(COLORS.layer1);
+                    pillars.interBC.material.color.setHex(COLORS.layer1);
+                }, 500);
+            } 
+            else if (currentStep === 3) {
+                // 步骤 3：中心红心连铲 2 刀 (-2×都3)
+                // 缩减高度从 3 层 (7.5) 降到 1 层 (2.5)，即 scale.y 变到 0.333
+                new TWEEN.Tween(pillars.centerABC.scale).to({ y: 0.333 }, 1000).easing(TWEEN.Easing.Back.Out).start();
+
+                setTimeout(() => {
+                    pillars.centerABC.material.color.setHex(COLORS.layer1);
+                }, 600);
+            }
+        }
+
+        // 动画执行：模式二（标准 3D 加减掏空）
+        function animateStandardStep() {
+            if (currentStep === 0) {
+                new TWEEN.Tween(pillars.centerABC.scale).to({ y: 1 }, 600).start();
+                pillars.centerABC.material.color.setHex(COLORS.layer3);
+            }
+            else if (currentStep === 1) {
+                // 步骤 2：减双交集 -> 中心被连减 3 次直接掏空成 0！
+                new TWEEN.Tween(pillars.centerABC.scale).to({ y: 0.01 }, 800).easing(TWEEN.Easing.Bounce.Out).start();
+                pillars.centerABC.material.color.setHex(0x1a202c);
+            }
+            else if (currentStep === 2) {
+                // 步骤 3：加三 -> 加回 1 次中心红心，升起至标准 1 层！
+                new TWEEN.Tween(pillars.centerABC.scale).to({ y: 0.333 }, 800).easing(TWEEN.Easing.Elastic.Out).start();
+                pillars.centerABC.material.color.setHex(COLORS.layer1);
+            }
+        }
+
+        // 动画执行：模式三（铺砖 3D 挤压最值）
+        function animateExtremumStep() {
+            const blocks = pillars['blocks'];
+            if (!blocks) return;
+
+            if (currentStep === 0) {
+                blocks.forEach(b => {
+                    new TWEEN.Tween(b.scale).to({ y: 0.01 }, 500).start();
+                    b.material.color.setHex(COLORS.layer1);
+                });
+            }
+            else if (currentStep === 1) {
+                // 步骤 2：全场 100 个坑位平铺满 2 层高度
+                blocks.forEach(b => {
+                    new TWEEN.Tween(b.scale).to({ y: 4.0 }, 800).easing(TWEEN.Easing.Quadratic.Out).start();
+                });
+            }
+            else if (currentStep === 2) {
+                // 步骤 3：剩余 10 块砖无处可去，只能在局部 10 个方块上拔高到第 3 层！
+                for (let i = 0; i < 10; i++) {
+                    new TWEEN.Tween(blocks[i].scale).to({ y: 6.0 }, 1000).easing(TWEEN.Easing.Back.Out).start();
+                    blocks[i].material.color.setHex(COLORS.layer3);
+                }
+            }
+        }
+
+        // 更新 UI 文本状态
+        function updateUI() {
+            const badge = document.getElementById('badge-text');
+            const heading = document.getElementById('step-heading');
+            const detail = document.getElementById('step-detail');
+            const math = document.getElementById('math-display');
+            const btn = document.getElementById('next-action-btn');
+
+            if (currentMode === 'non-standard') {
+                if (currentStep === 0) {
+                    badge.innerText = '步骤 1 / 4：三维厚度堆叠';
+                    heading.innerText = '倒上面糊 A、B、C，观察三维厚度堆叠';
+                    detail.innerText = '三团面糊倒在铁锅中：单项区域厚度为 1，两两相交的花瓣叠到了 2 层厚，最中心的红心区域堆叠了 3 层厚！锅底裸露为 0 层。';
+                    math.innerHTML = '总数 = A + B + C (当前锅面高低起伏)';
+                    btn.innerHTML = '👉 步骤 2：补齐锅底 (+都不)';
+                } else if (currentStep === 1) {
+                    badge.innerText = '步骤 2 / 4：锅底补齐';
+                    heading.innerText = '锅底没铺到的空白处，补上 1 层面糊 (+都不)';
+                    detail.innerText = '都不满足的区域算漏了（原为 0 层）。现在给它补上一层面糊，全场底座全部拥有至少 1 层厚度！';
+                    math.innerHTML = '当前总厚度 = (A + B + C) + 都不';
+                    btn.innerHTML = '👉 步骤 3：铲平 2 层花瓣 (-只2)';
+                } else if (currentStep === 2) {
+                    badge.innerText = '步骤 3 / 4：花瓣铲削';
+                    heading.innerText = '拿铲子削平 2 层厚的花瓣 (-只满足2项)';
+                    detail.innerText = '只满足 2 项的 3 个花瓣区域多算了 1 次（厚度为 2）。3D 铲刀横向削去 1 层，花瓣完美降至标准 1 层厚度！';
+                    math.innerHTML = '当前总厚度 = (A + B + C) + 都不 - 只2';
+                    btn.innerHTML = '👉 步骤 4：削平中心红心 (-2×都3)';
+                } else if (currentStep === 3) {
+                    badge.innerText = '步骤 4 / 4：全锅找平完成！';
+                    heading.innerText = '中心红心连铲 2 刀，全锅完美找平！';
+                    detail.innerText = '中心 3 项都满足的高塔多算了 2 次（厚度为 3）。连削 2 刀后降至 1 层！全锅每一个角落厚度严格等于 1，正好等于总人数！';
+                    math.innerHTML = '<span style="color:#f6ad55;">总人数 = A + B + C + 都不 - 只2 - 2×都3</span>';
+                    btn.innerHTML = '🔄 重新演示';
+                }
+            } else if (currentMode === 'standard') {
+                if (currentStep === 0) {
+                    badge.innerText = '步骤 1 / 3：加单项';
+                    heading.innerText = '加单项（A + B + C）：中心红心厚度为 3';
+                    detail.innerText = '三个集合相加，最中心红心被 A、B、C 共同覆盖了 3 次（高度为 3）。';
+                    math.innerHTML = '中心高度 = +3 层';
+                    btn.innerText = '👉 步骤 2：减双交集 (-两两交集)';
+                } else if (currentStep === 1) {
+                    badge.innerText = '步骤 2 / 3：减双交集';
+                    heading.innerText = '减去 3 个两两交集：中心红心被连减 3 次掏空！';
+                    detail.innerText = '因为中心同时属于 3 个双交集，减去它们时中心被连扣 3 次！高度直接变成 3 - 3 = 0，中心被掏成空心洞！';
+                    math.innerHTML = '中心高度 = 3 - 3 = <span style="color:#fc8181;">0 层 (被掏空！)</span>';
+                    btn.innerText = '👉 步骤 3：加回中心 (+A∩B∩C)';
+                } else if (currentStep === 2) {
+                    badge.innerText = '步骤 3 / 3：补齐完成';
+                    heading.innerText = '加回 1 次中心红心 (+A ∩ B ∩ C)，完美找平！';
+                    detail.innerText = '为了填补掏空的洞，必须加回 1 次中心交集，高度恢复为 1 层！公式口诀：加单、减双、加三！';
+                    math.innerHTML = '<span style="color:#f6ad55;">总数 = A+B+C+都不 - (双交集) + A∩B∩C</span>';
+                    btn.innerText = '🔄 重新演示';
+                }
+            } else if (currentMode === 'extremum') {
+                if (currentStep === 0) {
+                    badge.innerText = '步骤 1 / 3：100 个 3D 凹槽底座';
+                    heading.innerText = '100 个底座凹槽排开，待铺 210 块砖';
+                    detail.innerText = '目标：让 3 项全满足（叠满 3 层）的人数尽可能少！总砖数 210 块。';
+                    math.innerHTML = '总砖数 = 210, 底座 = 100';
+                    btn.innerText = '👉 步骤 2：均匀平铺前 2 层';
+                } else if (currentStep === 1) {
+                    badge.innerText = '步骤 2 / 3：雨露均沾平铺';
+                    heading.innerText = '先把所有 100 个凹槽平铺满 2 层高度';
+                    detail.innerText = '为了不让任何人叠到第 3 层，先把 100 个坑全部铺满 2 层砖，均匀消耗 (3-1)×100 = 200 块砖。';
+                    math.innerHTML = '已消耗砖数 = 2 × 100 = 200 块';
+                    btn.innerText = '👉 步骤 3：查看溢出第 3 层';
+                } else if (currentStep === 2) {
+                    badge.innerText = '步骤 3 / 3：溢出挤压';
+                    heading.innerText = '溢出的 10 块砖无处可去，只能拔高叠出第 3 层！';
+                    detail.innerText = '总共 210 块砖减去前两层的 200 块，剩下 10 块砖被逼叠在 10 个位置上成为第 3 层！因此至少有 10 人！';
+                    math.innerHTML = '<span style="color:#f6ad55;">至少全满人数 = 210 - 2×100 = 10 人</span>';
+                    btn.innerText = '🔄 重新演示';
+                }
+            }
+        }
+
+        // ==========================================
+        // 相机视角预设切换 (平滑插值动画)
+        // ==========================================
+        function setCameraView(type) {
+            let targetPos = { x: 0, y: 32, z: 40 };
+            if (type === 'top') {
+                targetPos = { x: 0, y: 55, z: 0.1 };
+            } else if (type === 'side') {
+                targetPos = { x: 0, y: 6, z: 48 };
+            } else if (type === 'iso') {
+                targetPos = { x: 28, y: 26, z: 32 };
+            }
+
+            new TWEEN.Tween(camera.position)
+                .to(targetPos, 1000)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .start();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // 渲染主循环
+        function animate(time) {
+            requestAnimationFrame(animate);
+            TWEEN.update();
+            controls.update();
+
+            // 锅体微弱自转 (增强 3D 空间纵深感)
+            panGroup.rotation.y += 0.001;
+            pancakeGroup.rotation.y += 0.001;
+
+            renderer.render(scene, camera);
+        }
+
+        // 启动
+        window.onload = () => {
+            initThree();
+            updateUI();
+        };
+    </script>
+</body>
+</html>

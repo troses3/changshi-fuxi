@@ -180,6 +180,7 @@ function KnowledgeSentenceCard({ sentenceItem, searchQuery }) {
 
 function App() {
   const headerRef = useRef(null);
+  const skipCategoryResetRef = useRef(true);
   const modeBarRef = useRef(null);
   const cardBackInnerRef = useRef(null);
   const actionButtonsRef = useRef(null);
@@ -1236,3 +1237,5 @@ function App() {
 }
 
 export default App;
+
+// vercel trigger 2026-08-31 14:15
