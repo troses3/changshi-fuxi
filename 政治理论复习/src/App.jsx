@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { initialPoliticalTheory } from './data/political_theory';
 import { chaogePoliticalTheory, chaogeContrastItems } from './data/political_theory_chaoge';
 import { chaoge27PoliticalTheory } from './data/political_theory_chaoge_27';
+import { triggerHaptic } from './utils/haptics';
 import './App.css';
 
 const getShortMeaning = (meaning) => {
@@ -581,6 +582,7 @@ function App() {
   }, [currentIndex, currentCategoryItems.length, activeMode, selectedCategory]);
 
   const handleFilterClick = (targetFilter) => {
+    triggerHaptic('optionSelect');
     if (filter === targetFilter) {
       setFilter('all');
       return;
@@ -603,6 +605,14 @@ function App() {
 
   const handleNext = (status) => {
     if (!currentItem) return;
+
+    if (status === 'known') {
+      triggerHaptic('success');
+    } else if (status === 'unknown') {
+      triggerHaptic('error');
+    } else {
+      triggerHaptic('tap');
+    }
 
     // 如果当前处于搜索独立预览状态，更新状态后直接关闭预览，无缝回到主进度！
     if (inspectingSearchItem) {
@@ -707,6 +717,7 @@ function App() {
 
   const handlePrev = (e) => {
     e.stopPropagation();
+    triggerHaptic('tap');
     if (history.length > 0) {
       const prevIndex = history[history.length - 1];
       setHistory(prev => prev.slice(0, -1));
@@ -717,16 +728,19 @@ function App() {
   };
 
   const handleOpenSearch = () => {
+    triggerHaptic('menuToggle');
     setIsSearchOpen(true);
   };
 
   const handleCloseSearch = () => {
+    triggerHaptic('clear');
     setIsSearchOpen(false);
     setSearchQuery('');
     setInspectingSearchItem(null);
   };
 
   const handleSelectSearchItem = (targetItem) => {
+    triggerHaptic('optionSelect');
     setInspectingSearchItem(targetItem);
     setSearchQuery('');
     setIsSearchOpen(false);
@@ -758,6 +772,7 @@ function App() {
             className="header-icon-btn reset-header-btn" 
             title="重置当前题库进度"
             onClick={() => {
+              triggerHaptic('dangerReset');
               const dbName = dataSource === 'huasheng' ? '花生' : (dataSource === 'chaoge27' ? '超格(27)' : '超格(26)');
               if(window.confirm(`确定要重置当前数据库（${dbName}）的学习进度吗？`)) {
                 let storageKey = 'pt-tracker-v17-huasheng';
@@ -780,7 +795,10 @@ function App() {
           {/* 中间：可交互的沉浸指示胶囊（点击展开/收起题库与筛选控制面板） */}
           <button 
             className={`header-meta-pill ${isPanelOpen ? 'active' : ''}`}
-            onClick={() => setIsPanelOpen(prev => !prev)}
+            onClick={() => {
+              triggerHaptic('menuToggle');
+              setIsPanelOpen(prev => !prev);
+            }}
             title={isPanelOpen ? "收起控制面板" : "展开题库与章节面板"}
           >
             <span className="pill-db-name">{dataSource === 'huasheng' ? '🥜 花生' : (dataSource === 'chaoge27' ? '📖 超格27' : '📖 超格26')}</span>
@@ -876,9 +894,9 @@ function App() {
           <div className="progress-container panel-drawer-open">
             <div className="db-toggle-row">
               <div className="db-toggle">
-                <button className={`db-btn ${dataSource === 'huasheng' ? 'active' : ''}`} onClick={() => setDataSource('huasheng')}>🥜 花生</button>
-                <button className={`db-btn ${dataSource === 'chaoge26' || dataSource === 'chaoge' ? 'active' : ''}`} onClick={() => setDataSource('chaoge26')}>📖 超格(26)</button>
-                <button className={`db-btn ${dataSource === 'chaoge27' ? 'active' : ''}`} onClick={() => setDataSource('chaoge27')}>📖 超格(27)</button>
+                <button className={`db-btn ${dataSource === 'huasheng' ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setDataSource('huasheng'); }}>🥜 花生</button>
+                <button className={`db-btn ${dataSource === 'chaoge26' || dataSource === 'chaoge' ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setDataSource('chaoge26'); }}>📖 超格(26)</button>
+                <button className={`db-btn ${dataSource === 'chaoge27' ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setDataSource('chaoge27'); }}>📖 超格(27)</button>
               </div>
             </div>
 
@@ -913,7 +931,10 @@ function App() {
 
                 <button 
                   className={`stat-item ${filter === 'all' ? 'active-all' : ''}`}
-                  onClick={() => setFilter('all')}
+                  onClick={() => {
+                    triggerHaptic('optionSelect');
+                    setFilter('all');
+                  }}
                   title="查看全部"
                 >
                   总计: <span className="stat-count">{total}</span>
@@ -936,6 +957,7 @@ function App() {
                     key={cat.key}
                     className={`cat-chip ${selectedCategory === cat.key ? 'active' : ''}`}
                     onClick={() => {
+                      triggerHaptic('optionSelect');
                       setSelectedCategory(cat.key);
                     }}
                   >
@@ -951,6 +973,7 @@ function App() {
                     key={cat.key}
                     className={`cat-chip ${selectedCategory === cat.key ? 'active' : ''}`}
                     onClick={() => {
+                      triggerHaptic('optionSelect');
                       setSelectedCategory(cat.key);
                     }}
                   >
@@ -966,6 +989,7 @@ function App() {
                     key={cat.key}
                     className={`cat-chip ${selectedCategory === cat.key ? 'active' : ''}`}
                     onClick={() => {
+                      triggerHaptic('optionSelect');
                       setSelectedCategory(cat.key);
                     }}
                   >
@@ -1028,7 +1052,7 @@ function App() {
             {/* 卡片模式：挖空特训 & 易混辨析 */}
             {(activeMode === 'quiz' || activeMode === 'contrast') && (
               <>
-                <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: `${calculatedMarginTop}px` }} onClick={() => setIsFlipped(!isFlipped)}>
+                <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: `${calculatedMarginTop}px` }} onClick={() => { triggerHaptic('cardFlip'); setIsFlipped(!isFlipped); }}>
                   <div className={`card ${isFlipped ? 'flipped' : ''}`}>
                     {/* 卡片正面 */}
                     <div className="card-front">
@@ -1110,6 +1134,11 @@ function App() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (selectedOption === null) {
+                                      if (opt.isCorrect) {
+                                        triggerHaptic('success');
+                                      } else {
+                                        triggerHaptic('error');
+                                      }
                                       setSelectedOption(index);
                                     }
                                   }}
@@ -1213,22 +1242,22 @@ function App() {
 
       {/* 底部悬浮模式栏（极简单层设计，无多层套娃） */}
       <nav className="floating-mode-bar" ref={modeBarRef}>
-        <button className={`mode-btn ${activeMode === 'contrast' ? 'active' : ''}`} onClick={() => setActiveMode('contrast')}>
+        <button className={`mode-btn ${activeMode === 'contrast' ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setActiveMode('contrast'); }}>
           易混辨析
         </button>
-        <button className={`mode-btn ${activeMode === 'quiz' ? 'active' : ''}`} onClick={() => setActiveMode('quiz')}>
+        <button className={`mode-btn ${activeMode === 'quiz' ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setActiveMode('quiz'); }}>
           挖空特训
         </button>
-        <button className={`mode-btn ${activeMode === 'speed' ? 'active' : ''}`} onClick={() => setActiveMode('speed')}>
+        <button className={`mode-btn ${activeMode === 'speed' ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setActiveMode('speed'); }}>
           速览速记
         </button>
 
         <span className="mode-divider"></span>
 
-        <button className={`mode-btn random-btn ${!isRandom ? 'active' : ''}`} onClick={() => setIsRandom(false)}>
+        <button className={`mode-btn random-btn ${!isRandom ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setIsRandom(false); }}>
           顺序
         </button>
-        <button className={`mode-btn random-btn ${isRandom ? 'active' : ''}`} onClick={() => setIsRandom(true)}>
+        <button className={`mode-btn random-btn ${isRandom ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setIsRandom(true); }}>
           随机
         </button>
       </nav>
