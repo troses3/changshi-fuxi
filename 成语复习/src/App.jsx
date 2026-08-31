@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { initialIdioms } from './data/idioms';
+import { triggerHaptic } from './utils/haptics';
 import './App.css';
 
 const STORAGE_KEY = 'idiom-tracker-data-v5';
@@ -160,16 +161,19 @@ function App() {
     : [];
 
   const handleOpenSearch = () => {
+    triggerHaptic('menuToggle');
     setIsSearchOpen(true);
   };
 
   const handleCloseSearch = () => {
+    triggerHaptic('clear');
     setIsSearchOpen(false);
     setSearchQuery('');
     setInspectingSearchItem(null);
   };
 
   const handleSelectSearchItem = (targetItem) => {
+    triggerHaptic('optionSelect');
     setInspectingSearchItem(targetItem);
     setSearchQuery('');
     setIsSearchOpen(false);
@@ -377,6 +381,7 @@ function App() {
   }, [currentIndex, idioms.length, quizMode]);
 
   const handleFilterClick = (targetFilter) => {
+    triggerHaptic('optionSelect');
     if (filter === targetFilter) {
       setFilter('all');
       return;
@@ -398,6 +403,14 @@ function App() {
   };
 
   const handleNext = (status) => {
+    if (status === 'known') {
+      triggerHaptic('success');
+    } else if (status === 'unknown') {
+      triggerHaptic('error');
+    } else {
+      triggerHaptic('tap');
+    }
+
     if (inspectingSearchItem) {
       const updatedIdioms = [...idioms];
       const targetIdx = updatedIdioms.findIndex(i => i.word === inspectingSearchItem.word);
@@ -495,6 +508,7 @@ function App() {
 
   const handlePrev = (e) => {
     e.stopPropagation();
+    triggerHaptic('tap');
     if (history.length > 0) {
       const prevIndex = history[history.length - 1];
       setHistory(prev => prev.slice(0, -1));
@@ -527,6 +541,7 @@ function App() {
             className="header-icon-btn reset-header-btn" 
             title="重置当前题库进度"
             onClick={() => {
+              triggerHaptic('dangerReset');
               if(window.confirm('确定要重置所有学习进度吗？')) {
                 localStorage.removeItem(STORAGE_KEY);
                 window.location.reload();
@@ -542,7 +557,10 @@ function App() {
           {/* 中间：可交互的沉浸指示胶囊（点击展开/收起题型与掌握度面板） */}
           <button 
             className={`header-meta-pill ${isPanelOpen ? 'active' : ''}`}
-            onClick={() => setIsPanelOpen(prev => !prev)}
+            onClick={() => {
+              triggerHaptic('menuToggle');
+              setIsPanelOpen(prev => !prev);
+            }}
             title={isPanelOpen ? "收起筛选面板" : "展开题型与掌握度面板"}
           >
             <span className="pill-db-name">📚 成语题库</span>
@@ -657,7 +675,10 @@ function App() {
               </button>
               <button 
                 className={`stat-item ${filter === 'all' ? 'active-all' : ''}`}
-                onClick={() => setFilter('all')}
+                onClick={() => {
+                  triggerHaptic('optionSelect');
+                  setFilter('all');
+                }}
                 title="查看全部"
               >
                 总计: <span className="stat-count">{total}</span>
@@ -738,7 +759,7 @@ function App() {
               </div>
             )}
 
-            <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: `${calculatedMarginTop}px` }} onClick={() => setIsFlipped(!isFlipped)}>
+            <div className={`card-container ${selectedOption !== null ? 'expanded' : ''}`} style={{ height: isFlipped ? cardHeight : '340px', marginTop: `${calculatedMarginTop}px` }} onClick={() => { triggerHaptic('cardFlip'); setIsFlipped(!isFlipped); }}>
           <div className={`card ${isFlipped ? 'flipped' : ''}`}>
             <div className="card-front">
               <div className="card-top-bar">
@@ -797,6 +818,11 @@ function App() {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (selectedOption === null) {
+                              if (opt.isCorrect) {
+                                triggerHaptic('success');
+                              } else {
+                                triggerHaptic('error');
+                              }
                               setSelectedOption(index);
                             }
                           }}
@@ -897,19 +923,19 @@ function App() {
 
       {/* 底部悬浮模式栏（极简单层设计，无多层套娃） */}
       <nav className="floating-mode-bar" ref={modeBarRef}>
-        <button className={`mode-btn ${quizMode === 'meaning' ? 'active' : ''}`} onClick={() => setQuizMode('meaning')}>
+        <button className={`mode-btn ${quizMode === 'meaning' ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setQuizMode('meaning'); }}>
           释义模式
         </button>
-        <button className={`mode-btn ${quizMode === 'sentence' ? 'active' : ''}`} onClick={() => setQuizMode('sentence')}>
+        <button className={`mode-btn ${quizMode === 'sentence' ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setQuizMode('sentence'); }}>
           例句模式
         </button>
 
         <span className="mode-divider"></span>
 
-        <button className={`mode-btn random-btn ${!isRandom ? 'active' : ''}`} onClick={() => setIsRandom(false)}>
+        <button className={`mode-btn random-btn ${!isRandom ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setIsRandom(false); }}>
           顺序
         </button>
-        <button className={`mode-btn random-btn ${isRandom ? 'active' : ''}`} onClick={() => setIsRandom(true)}>
+        <button className={`mode-btn random-btn ${isRandom ? 'active' : ''}`} onClick={() => { triggerHaptic('optionSelect'); setIsRandom(true); }}>
           随机
         </button>
       </nav>
